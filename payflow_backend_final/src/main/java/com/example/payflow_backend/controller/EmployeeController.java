@@ -1,30 +1,35 @@
 package com.example.payflow_backend.controller;
 
-import com.example.payflow_backend.dto.AuthRequest;
-import com.example.payflow_backend.model.Employee;
-import com.example.payflow_backend.repository.EmployeeRepository;
-import com.example.payflow_backend.service.EmployeeService;
-import com.example.payflow_backend.service.EmailService;
-import com.example.payflow_backend.service.UserService;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.*;
-
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import com.example.payflow_backend.model.User;
-import com.example.payflow_backend.repository.UserRepository;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.example.payflow_backend.model.Employee;
+import com.example.payflow_backend.model.User;
+import com.example.payflow_backend.repository.EmployeeRepository;
+import com.example.payflow_backend.repository.UserRepository;
+import com.example.payflow_backend.service.EmailService;
+import com.example.payflow_backend.service.EmployeeService;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 
 
 @RestController
@@ -136,7 +141,7 @@ public class EmployeeController {
 
         Employee emp = empOpt.get();
 
-        if (!Boolean.TRUE.equals(emp.isTempPassword())) {
+        if (!emp.isTempPassword()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Password reset is not required"));
         }
 

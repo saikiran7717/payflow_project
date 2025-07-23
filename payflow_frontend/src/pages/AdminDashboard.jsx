@@ -21,7 +21,7 @@ export default function AdminDashboard({ active }) {
   const location = useLocation();
   const routePanel = active || (location.pathname.includes("add-user") ? "createForm" : location.pathname.includes("users") ? "userList" : "dashboard");
 
-  const [form, setForm] = useState({ username: "", email: "", password: "", role: "hr" });
+  const [form, setForm] = useState({ username: "", email: "", role: "hr" });
   const [created, setCreated] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -70,7 +70,6 @@ export default function AdminDashboard({ active }) {
         body: JSON.stringify({
           username: form.username,
           email: form.email,
-          password: form.password,
           role: form.role.toUpperCase(),
           createdBy: 1
         })
@@ -86,7 +85,7 @@ export default function AdminDashboard({ active }) {
 
       const newUser = await res.json();
       setCreated(newUser);
-      setForm({ username: "", email: "", password: "", role: "hr" });
+      setForm({ username: "", email: "", role: "hr" });
       fetchUsers();
       toast.success(`${newUser.role} added successfully!`);
     } catch (err) {
@@ -196,7 +195,6 @@ const handleToggleStatus = async (id) => {
                   <option value="hr">HR</option>
                   <option value="manager">Manager</option>
                 </select>
-                <input name="password" value={form.password} onChange={handleChange} required type="password" placeholder="Password" style={{ padding: 10, borderRadius: 6, border: "1px solid #747f8fff", background: "white", color: "black" }} />
                 <button style={{ background: loading ? "#b2f5ea" : "#4fd1c5", color: "#fff", border: "none", borderRadius: 6, padding: "12px 0", fontWeight: 600, fontSize: "1.1rem", cursor: loading ? "not-allowed" : "pointer" }} disabled={loading}>{loading ? "Creating..." : "Create Account"}</button>
               </form>
             </div>

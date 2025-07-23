@@ -8,6 +8,7 @@ import { FaSignOutAlt } from "react-icons/fa";
 
 export default function HRDashboard() {
   const { user, logout } = useAuth();
+
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#f8fafc" }}>
       {/* HR Navbar */}
@@ -27,22 +28,6 @@ export default function HRDashboard() {
         <main style={{ marginLeft: 220, padding: "2rem", width: "100%" , color: "black"}}>
           <h2 className="text-2xl font-semibold mb-4">HR Panel</h2>
           <p>Welcome {user?.username || "HR"}, manage your employee onboarding here.</p>
-          <div style={{ marginTop: 32 }}>
-            <Link
-              to="/Employee/AddEmployee/add"
-              style={{
-                background: "#4fd1c5",
-                color: "#fff",
-                padding: "10px 24px",
-                borderRadius: 8,
-                fontWeight: 600,
-                textDecoration: "none",
-                fontSize: "1rem"
-              }}
-            >
-              Add Employee
-            </Link>
-          </div>
         </main>
       </div>
     </div>

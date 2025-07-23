@@ -1,15 +1,16 @@
 package com.example.payflow_backend.service;
 
-import com.example.payflow_backend.model.Employee;
-import com.example.payflow_backend.repository.EmployeeRepository;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
+import com.example.payflow_backend.model.Employee;
+import com.example.payflow_backend.repository.EmployeeRepository;
 
 @Service
 public class EmployeeService {
@@ -36,7 +37,9 @@ public class EmployeeService {
 
     public Employee login(String email, String rawPassword) {
         Optional<Employee> empOpt = repo.findByEmail(email);
-        if (empOpt.isEmpty()) return null;
+        if (empOpt.isEmpty()) {
+			return null;
+		}
 
         Employee emp = empOpt.get();
         if (passwordEncoder.matches(rawPassword, emp.getPasswordHash())) {

@@ -1,20 +1,21 @@
 package com.example.payflow_backend.service;
 
-import com.example.payflow_backend.model.Admin;
-import com.example.payflow_backend.model.User;
-import com.example.payflow_backend.repository.AdminRepository;
-import com.example.payflow_backend.repository.UserRepository;
+import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+
+import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import org.apache.commons.lang3.RandomStringUtils;
+import com.example.payflow_backend.model.Admin;
+import com.example.payflow_backend.model.User;
+import com.example.payflow_backend.repository.AdminRepository;
+import com.example.payflow_backend.repository.UserRepository;
 
 @Service
 public class UserService {
@@ -81,7 +82,7 @@ public class UserService {
     public User login(String email, String password) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
+
         if (!new BCryptPasswordEncoder().matches(password, user.getPasswordHash())) {
             throw new RuntimeException("Invalid password");
         }

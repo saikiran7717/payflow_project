@@ -90,13 +90,51 @@ const Sidebar = () => {
                     Show User List
                   </Link>
                 </li>
+                <li>
+                  <Link to="/admin/employees" style={linkStyle("/admin/employees")}>
+                    Employees
+                  </Link>
+                </li>
               </>
             )}
-            <li>
-              <Link to="/admin/employees" style={linkStyle("/admin/employees")}>
-                Employees
-              </Link>
-            </li>
+            {localUser && localUser.role === "HR" && (
+              <>
+                <li>
+                  <Link to="/hr" style={linkStyle("/hr")}>
+                    HR Dashboard
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/Employee/AddEmployee/add" style={linkStyle("/Employee/AddEmployee/add")}>
+                    Add Employee
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/hr/employees" style={linkStyle("/hr/employees")}>
+                    Employee List
+                  </Link>
+                </li>
+              </>
+            )}
+            {localUser && localUser.role === "MANAGER" && (
+              <>
+                <li>
+                  <Link to="/manager" style={linkStyle("/manager")}>
+                    Manager Dashboard
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/Employee/AddEmployee/add" style={linkStyle("/Employee/AddEmployee/add")}>
+                    Add Employee
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/manager/employees" style={linkStyle("/manager/employees")}>
+                    Employee List
+                  </Link>
+                </li>
+              </>
+            )}
             {localUser && (
               <li>
                 <button
