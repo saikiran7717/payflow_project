@@ -4,19 +4,40 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 export default function AddEmployee() {
+  const [step, setStep] = useState(1);
+
   const [form, setForm] = useState({
     fullName: "",
     email: "",
     age: "",
     totalExperience: "",
     pastExperience: "",
-    password: ""
+    password: "",
+    address: "",
+    phone: "",
+    department: "",
+    position: "",
+    degree: "",
+    university: "",
+    graduationYear: "",
+    grade: ""
   });
+
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleNext = e => {
+    e.preventDefault();
+    setStep(2);
+  };
+
+  const handleBack = e => {
+    e.preventDefault();
+    setStep(1);
   };
 
   const handleSubmit = async e => {
@@ -33,10 +54,20 @@ export default function AddEmployee() {
           age: Number(form.age),
           totalExperience: Number(form.totalExperience),
           pastExperience: form.pastExperience,
-          passwordHash: form.password // backend should hash this!
+          passwordHash: form.password,
+          address: form.address,
+          phone: form.phone,
+          department: form.department,
+          position: form.position,
+          degree: form.degree,
+          university: form.university,
+          graduationYear: form.graduationYear,
+          grade: form.grade
         })
       });
+
       if (!res.ok) throw new Error("Failed to add employee");
+
       toast.success("Employee added successfully!");
       setForm({
         fullName: "",
@@ -44,8 +75,17 @@ export default function AddEmployee() {
         age: "",
         totalExperience: "",
         pastExperience: "",
-        password: ""
+        password: "",
+        address: "",
+        phone: "",
+        department: "",
+        position: "",
+        degree: "",
+        university: "",
+        graduationYear: "",
+        grade: ""
       });
+      setStep(1);
     } catch (err) {
       toast.error(err.message || "Failed to add employee");
     } finally {
@@ -69,7 +109,7 @@ export default function AddEmployee() {
           borderRadius: 18,
           boxShadow: "0 4px 24px rgba(79,209,197,0.13)",
           padding: "40px 32px",
-          maxWidth: 420,
+          maxWidth: 500,
           width: "100%",
           border: "1px solid #e2e8f0"
         }}>
@@ -78,120 +118,97 @@ export default function AddEmployee() {
             fontWeight: 700,
             marginBottom: "1.5rem",
             color: "#2563eb",
-            textAlign: "center",
-            letterSpacing: 0.5
+            textAlign: "center"
           }}>
             Add New Employee
           </h2>
-          <form onSubmit={handleSubmit} aria-label="Add employee form" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            <label htmlFor="fullName" style={labelStyle}>Full Name</label>
-            <input
-              id="fullName"
-              name="fullName"
-              value={form.fullName}
-              onChange={handleChange}
-              required
-              placeholder="Full Name"
-              style={inputStyle}
-            />
-            <label htmlFor="email" style={labelStyle}>Email</label>
-            <input
-              id="email"
-              name="email"
-              value={form.email}
-              onChange={handleChange}
-              required
-              type="email"
-              placeholder="Email"
-              style={inputStyle}
-            />
-            <label htmlFor="age" style={labelStyle}>Age</label>
-            <input
-              id="age"
-              name="age"
-              value={form.age}
-              onChange={handleChange}
-              required
-              type="number"
-              placeholder="Age"
-              style={inputStyle}
-            />
-            <label htmlFor="totalExperience" style={labelStyle}>Total Experience (years)</label>
-            <input
-              id="totalExperience"
-              name="totalExperience"
-              value={form.totalExperience}
-              onChange={handleChange}
-              required
-              type="number"
-              placeholder="Total Experience"
-              style={inputStyle}
-            />
-            <label htmlFor="pastExperience" style={labelStyle}>Past Experience (optional)</label>
-            <textarea
-              id="pastExperience"
-              name="pastExperience"
-              value={form.pastExperience}
-              onChange={handleChange}
-              placeholder="Past Experience"
-              style={{ ...inputStyle, minHeight: 60 }}
-            />
-            <label htmlFor="password" style={labelStyle}>Password</label>
-            <input
-              id="password"
-              name="password"
-              value={form.password}
-              onChange={handleChange}
-              required
-              type="password"
-              placeholder="Password"
-              style={inputStyle}
-            />
-            <button
-              type="submit"
-              style={buttonStyle}
-              disabled={
-                !form.fullName.trim() ||
-                !form.email.trim() ||
-                !form.age ||
-                !form.totalExperience ||
-                !form.password
-              }
-              aria-busy={loading}
-            >
-              {loading ? (
-                <span className="spinner" style={spinnerStyle}></span>
-              ) : null}
-              {loading ? "Adding..." : "Add Employee"}
-            </button>
-          </form>
-          {error && <div role="alert" style={{ marginTop: 20, color: "#ef4444", fontWeight: 600, textAlign: "center" }}>{error}</div>}
 
-          {/* Toast Container for pop-up messages */}
-          <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
+          <form onSubmit={step === 1 ? handleNext : handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            {step === 1 && (
+              <>
+                <label style={labelStyle}>Full Name</label>
+                <input style={inputStyle} name="fullName" value={form.fullName} onChange={handleChange} required />
+
+                <label style={labelStyle}>Email</label>
+                <input style={inputStyle} name="email" type="email" value={form.email} onChange={handleChange} required />
+
+                <label style={labelStyle}>Age</label>
+                <input style={inputStyle} name="age" type="number" value={form.age} onChange={handleChange} required />
+
+                <label style={labelStyle}>Total Experience</label>
+                <input style={inputStyle} name="totalExperience" type="number" value={form.totalExperience} onChange={handleChange} required />
+
+                <label style={labelStyle}>Past Experience</label>
+                <textarea style={{ ...inputStyle, minHeight: 60 }} name="pastExperience" value={form.pastExperience} onChange={handleChange} />
+
+                <label style={labelStyle}>Password</label>
+                <input style={inputStyle} name="password" type="password" value={form.password} onChange={handleChange} required />
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                <label style={labelStyle}>Address</label>
+                <input style={inputStyle} name="address" value={form.address} onChange={handleChange} required />
+
+                <label style={labelStyle}>Phone</label>
+                <input style={inputStyle} name="phone" value={form.phone} onChange={handleChange} required />
+
+                <label style={labelStyle}>Department</label>
+                <input style={inputStyle} name="department" value={form.department} onChange={handleChange} required />
+
+                <label style={labelStyle}>Position</label>
+                <input style={inputStyle} name="position" value={form.position} onChange={handleChange} required />
+
+                <label style={labelStyle}>Degree</label>
+                <input style={inputStyle} name="degree" value={form.degree} onChange={handleChange} required />
+
+                <label style={labelStyle}>University</label>
+                <input style={inputStyle} name="university" value={form.university} onChange={handleChange} required />
+
+                <label style={labelStyle}>Graduation Year</label>
+                <input style={inputStyle} name="graduationYear" value={form.graduationYear} onChange={handleChange} required />
+
+                <label style={labelStyle}>Grade / %</label>
+                <input style={inputStyle} name="grade" value={form.grade} onChange={handleChange} required />
+              </>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+              {step === 2 && (
+                <button onClick={handleBack} style={{ ...buttonStyle, background: "#6b7280" }} type="button">
+                  Back
+                </button>
+              )}
+              <button
+                type="submit"
+                style={buttonStyle}
+                disabled={loading}
+              >
+                {loading ? (
+                  <span className="spinner" style={spinnerStyle}></span>
+                ) : null}
+                {loading ? "Adding..." : step === 1 ? "Next" : "Add Employee"}
+              </button>
+            </div>
+          </form>
+
+          {error && <div style={{ marginTop: 20, color: "#ef4444", fontWeight: 600, textAlign: "center" }}>{error}</div>}
+          <ToastContainer position="top-right" autoClose={3000} />
         </div>
       </main>
+
       <style>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
-        }
-        @media (max-width: 600px) {
-          main {
-            margin-left: 0 !important;
-            padding: 10px !important;
-          }
-          form {
-            max-width: 98vw !important;
-            padding: 8px !important;
-          }
         }
       `}</style>
     </div>
   );
 }
 
-// Reusable styles
+// Styles
 const inputStyle = {
   width: "100%",
   marginBottom: 4,
