@@ -37,22 +37,22 @@ function AppRoutes() {
         </>
       )}
 
-      {user && user.role === "HR" && (
+      {user && (user.role === "HR" || user.role === "hr") && (
         <>
           <Route path="/hr" element={<HRDashboard />} />
-          <Route path="/hr/employees" element={<EmployeeListPage />} />
+          <Route path="/employees" element={<HRDashboard />} />
         </>
       )}
-      {user && user.role === "MANAGER" && (
-        <>
-          <Route path="/manager" element={<ManagerDashboard />} />
-          <Route path="/manager/employees" element={<EmployeeListPage />} />
-        </>
+      {user && (user.role === "MANAGER" || user.role === "manager") && (
+        <Route path="/manager" element={<ManagerDashboard />} />
       )}
 
       {/* Common Routes */}
       <Route path="/Employee/AddEmployee/add" element={<AddEmployee />} />
-      <Route path="/employees" element={<EmployeeList />} /> {/* accessible to HR/Manager */}
+      {/* Employee list accessible to HR/Manager */}
+      {user && user.role !== "admin" && (
+        <Route path="/employees" element={<HRDashboard />} />
+      )}
     </Routes>
   );
 }

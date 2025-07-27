@@ -97,7 +97,20 @@ export default function Login() {
           <FaSignInAlt style={{ fontSize: 70, color: "#38bdf8" }} />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, justifyContent: "center" }}>
-          <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="avatar" style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover", boxShadow: "0 2px 8px #38bdf8" }} />
+          <div style={{ 
+            width: 40, 
+            height: 40, 
+            borderRadius: "50%", 
+            background: "linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%)", 
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "center", 
+            boxShadow: "0 2px 8px #38bdf8",
+            color: "white",
+            fontSize: "1rem"
+          }}>
+            <FaUser />
+          </div>
           <div>
             <h2 style={{ color: "#0f172a", fontWeight: 700, fontSize: "1.25rem", marginBottom: 2 }}>Welcome Back!</h2>
             <div style={{ color: "#64748b", fontWeight: 500, fontSize: "0.95rem" }}>Sign in to your PayFlow account</div>
