@@ -4,10 +4,12 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ResetPassword from "./pages/ResetPassword";
-import Onboarding from "./pages/Onboarding";
 import AdminDashboard from "./pages/AdminDashboard";
 import HRDashboard from "./pages/HRDashboard";
 import ManagerDashboard from "./pages/Managerdashboard";
+import EmployeeDashboard from "./pages/EmployeeDashboard";
+import ApplyLeave from "./pages/ApplyLeave";
+import LeavesInfo from "./pages/LeavesInfo";
 import EmployeeListPage from "./pages/EmployeeListPage";
 import EmployeeList from "./pages/Employee/EmployeeList";
 import AddEmployee from "./pages/Employee/AddEmployee";
@@ -25,7 +27,9 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/reset" element={<ResetPassword />} />
-      <Route path="/onboarding" element={<Onboarding />} />
+      <Route path="/employee-dashboard" element={<EmployeeDashboard />} />
+      <Route path="/apply-leave" element={<ApplyLeave />} />
+      <Route path="/leaves-info" element={<LeavesInfo />} />
 
       {/* Dashboard routes only accessible if logged in */}
       {user && user.role === "admin" && (
@@ -41,10 +45,14 @@ function AppRoutes() {
         <>
           <Route path="/hr" element={<HRDashboard />} />
           <Route path="/employees" element={<HRDashboard />} />
+          <Route path="/leave-requests" element={<LeaveRequests />} />
         </>
       )}
       {user && (user.role === "MANAGER" || user.role === "manager") && (
-        <Route path="/manager" element={<ManagerDashboard />} />
+        <>
+          <Route path="/manager" element={<ManagerDashboard />} />
+          <Route path="/leave-requests" element={<LeaveRequests />} />
+        </>
       )}
 
       {/* Common Routes */}
@@ -53,6 +61,13 @@ function AppRoutes() {
       {user && user.role !== "admin" && (
         <Route path="/employees" element={<HRDashboard />} />
       )}
+      
+      {/* Catch-all route for unknown paths */}
+      <Route path="*" element={<div style={{ padding: "2rem", textAlign: "center" }}>
+        <h2>Page Not Found</h2>
+        <p>The page you're looking for doesn't exist.</p>
+        <a href="/login" style={{ color: "#38bdf8" }}>Go to Login</a>
+      </div>} />
     </Routes>
   );
 }

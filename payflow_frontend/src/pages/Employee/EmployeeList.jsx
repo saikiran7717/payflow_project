@@ -153,6 +153,7 @@ export default function EmployeeList() {
                   <th style={thStyle}>Email</th>
                   <th style={thStyle}>Age</th>
                   <th style={thStyle}>Phone</th>
+                  <th style={thStyle}>Manager</th>
                   <th style={thStyle}>Active</th>
                   <th style={thStyle}>Past Experience</th>
                 </tr>
@@ -172,6 +173,9 @@ export default function EmployeeList() {
                     <td style={tdStyle}>{emp.email}</td>
                     <td style={tdStyle}>{emp.age}</td>
                     <td style={tdStyle}>{emp.phone}</td>
+                    <td style={tdStyle}>
+                      {emp.manager ? `${emp.manager.username} (${emp.manager.email})` : 'No Manager'}
+                    </td>
                     <td style={tdStyle}>
                       <button
                         style={{

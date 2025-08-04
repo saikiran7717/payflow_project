@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import "../styles/form.css";
 import Navbar from "../components/Navbar";
-import { FaUserShield, FaUser, FaLock, FaSignInAlt } from "react-icons/fa";
+import { FaUserShield, FaUser, FaLock, FaSignInAlt, FaUserTie } from "react-icons/fa";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -18,41 +18,94 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    let url = role === "admin" ? "/api/admins/login" : "/api/users/login";
+    
+    // Clear any potential onboarding-related localStorage data
+    localStorage.removeItem("onboarding_step");
+    localStorage.removeItem("onboarding_data");
+    
+    let url;
+    if (role === "admin") {
+      url = "/api/admins/login";
+    } else if (role === "employee") {
+      url = "/api/employees/login";
+    } else {
+      url = "/api/users/login";
+    }
     try {
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, password })
       });
+      
       if (!res.ok) {
         let errorMsg = "Incorrect email or password. Please try again.";
+        
         if (res.status === 403) {
-          const errorData = await res.json();
-          errorMsg = errorData.error || "Your account is disabled. Please contact admin.";
+          // Handle account disabled case
+          try {
+            const errorData = await res.json();
+            errorMsg = errorData.error || "Your account is disabled. Please contact HR/Manager.";
+          } catch (parseError) {
+            errorMsg = "Your account is disabled. Please contact HR/Manager.";
+          }
+          toast.error(errorMsg, { position: "top-center" });
+          setError(errorMsg);
+        } else if (res.status === 401) {
+          // Handle invalid credentials
+          try {
+            const errorData = await res.json();
+            errorMsg = errorData.error || "Invalid email or password.";
+          } catch (parseError) {
+            errorMsg = "Invalid email or password.";
+          }
           toast.error(errorMsg, { position: "top-center" });
           setError(errorMsg);
         } else {
-          setError("Invalid credentials");
+          // Handle other errors
+          try {
+            const errorData = await res.json();
+            errorMsg = errorData.error || errorData.message || "Login failed. Please try again.";
+          } catch (parseError) {
+            errorMsg = "Login failed. Please try again.";
+          }
           toast.error(errorMsg, { position: "top-center" });
+          setError(errorMsg);
         }
         setLoading(false);
         return;
       }
+      
       const data = await res.json();
+      
+      // Add role information to the data for employee logins
+      if (role === "employee") {
+        data.role = "EMPLOYEE";
+        data.isEmployee = true;
+      }
+      
       localStorage.setItem("payflow_user", JSON.stringify(data));
       toast.success("Login successful!", { position: "top-center" });
       setTimeout(() => {
         if (role === "admin") {
+          console.log("Redirecting admin to /admin");
           window.location.href = "/admin";
+        } else if (role === "employee") {
+          if (data.requiresPasswordReset === true) {
+            console.log("Employee needs password reset, redirecting to /reset");
+            window.location.href = "/reset";
+            return;
+          }
+          // Always redirect to employee dashboard - explicit logging
+          console.log("Employee login successful, redirecting to /employee-dashboard");
+          window.location.href = "/employee-dashboard";
         } else {
           if (data.requiresPasswordReset === true) {
             window.location.href = "/reset";
             return;
           }
-          if (data.role === "EMPLOYEE" && !data.onboarded) {
-            window.location.href = "/onboarding";
-          } else if (data.role === "HR") {
+          if (data.role === "HR") {
             window.location.href = "/hr";
           } else if (data.role === "MANAGER") {
             window.location.href = "/manager";
@@ -62,8 +115,9 @@ export default function Login() {
         }
       }, 1500);
     } catch (err) {
-      setError(err.message || "Login failed");
-      toast.error("Incorrect email or password. Please try again.", { position: "top-center" });
+      console.error("Login error:", err);
+      setError("Network error. Please check your connection and try again.");
+      toast.error("Network error. Please check your connection and try again.", { position: "top-center" });
     } finally {
       setLoading(false);
     }
@@ -118,12 +172,16 @@ export default function Login() {
         </div>
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }} aria-label="Login form">
           {/* Role selection */}
-          <div style={{ display: "flex", gap: 8, marginBottom: 2 }}>
-            <label htmlFor="role-user" style={{ flex: 1, cursor: "pointer", fontWeight: 500, color: "#0f172a", background: role === "user" ? "#e0f2fe" : "transparent", borderRadius: 8, padding: "5px 0", transition: "background 0.2s", fontSize: "0.98rem" }}>
-              <input id="role-user" type="radio" name="role" value="user" checked={role === "user"} onChange={e => setRole(e.target.value)} style={{ marginRight: 5 }} aria-checked={role === "user"} aria-label="User (HR/Manager/Employee)" />
+          <div style={{ display: "flex", gap: 6, marginBottom: 2, flexWrap: "wrap" }}>
+            <label htmlFor="role-user" style={{ flex: 1, minWidth: "80px", cursor: "pointer", fontWeight: 500, color: "#0f172a", background: role === "user" ? "#e0f2fe" : "transparent", borderRadius: 8, padding: "5px 8px", transition: "background 0.2s", fontSize: "0.9rem", textAlign: "center" }}>
+              <input id="role-user" type="radio" name="role" value="user" checked={role === "user"} onChange={e => setRole(e.target.value)} style={{ marginRight: 5 }} aria-checked={role === "user"} aria-label="User (HR/Manager)" />
               <FaUser style={{ marginRight: 3, color: "#38bdf8" }} /> User
             </label>
-            <label htmlFor="role-admin" style={{ flex: 1, cursor: "pointer", fontWeight: 500, color: "#0f172a", background: role === "admin" ? "#e0f2fe" : "transparent", borderRadius: 8, padding: "5px 0", transition: "background 0.2s", fontSize: "0.98rem" }}>
+            <label htmlFor="role-employee" style={{ flex: 1, minWidth: "80px", cursor: "pointer", fontWeight: 500, color: "#0f172a", background: role === "employee" ? "#e0f2fe" : "transparent", borderRadius: 8, padding: "5px 8px", transition: "background 0.2s", fontSize: "0.9rem", textAlign: "center" }}>
+              <input id="role-employee" type="radio" name="role" value="employee" checked={role === "employee"} onChange={e => setRole(e.target.value)} style={{ marginRight: 5 }} aria-checked={role === "employee"} aria-label="Employee" />
+              <FaUserTie style={{ marginRight: 3, color: "#10b981" }} /> Employee
+            </label>
+            <label htmlFor="role-admin" style={{ flex: 1, minWidth: "80px", cursor: "pointer", fontWeight: 500, color: "#0f172a", background: role === "admin" ? "#e0f2fe" : "transparent", borderRadius: 8, padding: "5px 8px", transition: "background 0.2s", fontSize: "0.9rem", textAlign: "center" }}>
               <input id="role-admin" type="radio" name="role" value="admin" checked={role === "admin"} onChange={e => setRole(e.target.value)} style={{ marginRight: 5 }} aria-checked={role === "admin"} aria-label="Admin" />
               <FaUserShield style={{ marginRight: 3, color: "#fbbf24" }} /> Admin
             </label>

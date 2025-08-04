@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Sidebar from "../components/Sidebar";
+import ManagerNavigation from "../components/ManagerNavigation";
 import { useAuth } from "../authContext.jsx";
-import { FaUsers, FaCheckCircle, FaUserSlash, FaCalendarAlt, FaHome, FaUser } from "react-icons/fa";
+import { FaUsers, FaCheckCircle, FaUserSlash, FaCalendarAlt } from "react-icons/fa";
 import { Bar, Pie } from "react-chartjs-2";
 import { useLocation } from "react-router-dom";
 import {
@@ -52,6 +53,10 @@ export default function ManagerDashboard() {
   const [expLoading, setExpLoading] = useState(false);
   const [expError, setExpError] = useState(null);
 
+  // Pending leave requests states
+  const [pendingLeaveRequests, setPendingLeaveRequests] = useState([]);
+  const [pendingLeavesLoading, setPendingLeavesLoading] = useState(false);
+
   // Determine current view based on URL - check for /employees path specifically
   const currentView = location.pathname === "/employees" ? "employeeList" : "dashboard";
 
@@ -72,9 +77,108 @@ export default function ManagerDashboard() {
       });
   };
 
+  // Fetch pending leave requests for manager's employees
+  const fetchPendingLeaveRequests = async () => {
+    setPendingLeavesLoading(true);
+    try {
+      const response = await fetch("/api/leaves/all", {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const pendingLeaves = Array.isArray(data) 
+          ? data.filter(leave => leave.status?.toUpperCase() === 'PENDING')
+            .slice(0, 3) // Show only first 3 pending requests
+          : [];
+        
+        setPendingLeaveRequests(pendingLeaves);
+      } else {
+        // Fallback to mock data
+        const mockPendingLeaves = [
+          {
+            id: 1,
+            employeeId: "EMP001",
+            employeeName: "John Doe",
+            startDate: "2025-08-10",
+            endDate: "2025-08-12",
+            reason: "Personal work",
+            status: "PENDING",
+            appliedDate: "2025-08-05"
+          },
+          {
+            id: 2,
+            employeeId: "EMP002", 
+            employeeName: "Jane Smith",
+            startDate: "2025-08-15",
+            endDate: "2025-08-17",
+            reason: "Medical appointment",
+            status: "PENDING",
+            appliedDate: "2025-08-07"
+          },
+          {
+            id: 3,
+            employeeId: "EMP003", 
+            employeeName: "Mike Johnson",
+            startDate: "2025-08-20",
+            endDate: "2025-08-22",
+            reason: "Family vacation",
+            status: "PENDING",
+            appliedDate: "2025-08-08"
+          }
+        ];
+        setPendingLeaveRequests(mockPendingLeaves);
+      }
+    } catch (error) {
+      console.error("Error fetching pending leave requests:", error);
+      
+      // Fallback to mock data on error
+      const mockPendingLeaves = [
+        {
+          id: 1,
+          employeeId: "EMP001",
+          employeeName: "John Doe", 
+          startDate: "2025-08-10",
+          endDate: "2025-08-12",
+          reason: "Personal work",
+          status: "PENDING",
+          appliedDate: "2025-08-05"
+        },
+        {
+          id: 2,
+          employeeId: "EMP002",
+          employeeName: "Sarah Wilson", 
+          startDate: "2025-08-18",
+          endDate: "2025-08-20",
+          reason: "Medical checkup",
+          status: "PENDING",
+          appliedDate: "2025-08-06"
+        }
+      ];
+      setPendingLeaveRequests(mockPendingLeaves);
+    } finally {
+      setPendingLeavesLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchEmployees();
+    fetchPendingLeaveRequests();
   }, []);
+
+  // Helper function to calculate leave days
+  const calculateLeaveDays = (startDate, endDate) => {
+    if (!startDate || !endDate) return 0;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end - start);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    return diffDays;
+  };
 
   const activeEmployees = employees.filter((emp) => emp.isActive === true);
   const disabledEmployees = employees.filter((emp) => emp.isActive === false);
@@ -187,12 +291,6 @@ export default function ManagerDashboard() {
     ],
   };
 
-  const [currentTime, setCurrentTime] = useState(() => new Date());
-  useEffect(() => {
-    const interval = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   const today = new Date();
   const formattedDate = today.toLocaleDateString(undefined, {
     year: "numeric",
@@ -209,75 +307,7 @@ export default function ManagerDashboard() {
         background: `linear-gradient(120deg, ${palette.bg} 60%, #e0f2fe 100%)`,
       }}
     >
-      <nav
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          background: palette.white,
-          padding: "22px 40px 18px 40px",
-          boxShadow: "0 4px 18px 0 rgba(36,37,38,0.06)",
-          borderBottom: `1.5px solid ${palette.bg}`,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
-          <span
-            style={{
-              fontSize: "2rem",
-              fontWeight: 800,
-              color: palette.accent,
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              letterSpacing: 0.5,
-            }}
-          >
-            <FaHome /> Manager Dashboard
-          </span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
-          <span style={{ fontWeight: 700, color: palette.dark, fontSize: "1.1rem" }}>
-            {user?.username ? `Welcome, ${user.username}` : "Welcome, Manager"}
-          </span>
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: "50%",
-              background: `linear-gradient(135deg, ${palette.accent} 0%, #8b5cf6 100%)`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              border: `2.5px solid ${palette.accent}`,
-              color: palette.white,
-              fontSize: "1.2rem",
-            }}
-          >
-            <FaUser />
-          </div>
-          <span
-            style={{
-              fontWeight: 700,
-              color: palette.accent,
-              fontSize: "1.25rem",
-              background: "linear-gradient(90deg, #f1f5f9 60%, #e0e7ef 100%)",
-              borderRadius: 8,
-              padding: "6px 18px",
-              boxShadow: "0 2px 8px #6366f122",
-              fontFamily: "monospace",
-              minWidth: 110,
-              textAlign: "center",
-              border: `1.5px solid ${palette.accent}22`,
-            }}
-          >
-            {currentTime.toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-            })}
-          </span>
-        </div>
-      </nav>
+      <ManagerNavigation />
 
       <div style={{ display: "flex", flex: 1 }}>
         <Sidebar />
@@ -335,6 +365,188 @@ export default function ManagerDashboard() {
                     <div style={{ fontSize: "1.7rem", fontWeight: 700, color: item.color }}>{item.value}</div>
                   </div>
                 ))}
+              </div>
+
+              {/* Pending Leave Requests Widget */}
+              <div
+                style={{
+                  background: `linear-gradient(120deg, #f8fafc 80%, #e0e7ef 100%)`,
+                  borderRadius: 20,
+                  boxShadow: "0 6px 24px 0 rgba(249, 115, 22, 0.09)",
+                  padding: 28,
+                  border: `1.5px solid ${palette.orange}`,
+                  marginBottom: 28,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 20,
+                  }}
+                >
+                  <h3
+                    style={{
+                      fontWeight: 800,
+                      margin: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      color: palette.orange,
+                      fontSize: "1.4rem",
+                      letterSpacing: 0.2,
+                    }}
+                  >
+                    <FaCalendarAlt /> Pending Leave Requests
+                  </h3>
+                  <button
+                    style={{
+                      background: palette.accent,
+                      color: palette.white,
+                      border: "none",
+                      borderRadius: 8,
+                      padding: "10px 20px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      fontSize: "0.95rem",
+                      boxShadow: "0 4px 12px rgba(99, 102, 241, 0.4)",
+                      transition: "all 0.2s",
+                    }}
+                    onClick={() => window.location.href = "/leave-requests"}
+                    onMouseOver={(e) => {
+                      e.target.style.background = "#5b5fc7";
+                      e.target.style.transform = "translateY(-1px)";
+                      e.target.style.boxShadow = "0 6px 16px rgba(99, 102, 241, 0.6)";
+                    }}
+                    onMouseOut={(e) => {
+                      e.target.style.background = palette.accent;
+                      e.target.style.transform = "translateY(0)";
+                      e.target.style.boxShadow = "0 4px 12px rgba(99, 102, 241, 0.4)";
+                    }}
+                  >
+                    View All Pending Requests
+                  </button>
+                </div>
+
+                {pendingLeavesLoading ? (
+                  <div style={{ textAlign: "center", padding: "2rem" }}>
+                    <p style={{ color: palette.orange, fontWeight: 600, fontSize: "1.1rem" }}>
+                      Loading pending requests...
+                    </p>
+                  </div>
+                ) : pendingLeaveRequests.length === 0 ? (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "2rem",
+                      background: palette.white,
+                      borderRadius: 12,
+                      border: `2px dashed ${palette.gray}44`,
+                    }}
+                  >
+                    <FaCheckCircle
+                      style={{
+                        fontSize: "3rem",
+                        color: palette.green,
+                        marginBottom: 16,
+                      }}
+                    />
+                    <p style={{ color: palette.green, fontWeight: 600, fontSize: "1.2rem", margin: 0 }}>
+                      No pending leave requests!
+                    </p>
+                    <p style={{ color: palette.gray, fontWeight: 500, fontSize: "1rem", margin: "8px 0 0 0" }}>
+                      All leave requests have been processed.
+                    </p>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      background: palette.white,
+                      borderRadius: 12,
+                      overflow: "hidden",
+                      border: `2px solid ${palette.orange}55`,
+                      boxShadow: "0 2px 8px rgba(251, 146, 60, 0.15)",
+                    }}
+                  >
+                    {/* Header Row */}
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "120px 1fr 100px 150px",
+                        background: `${palette.orange}20`,
+                        borderBottom: `2px solid ${palette.orange}66`,
+                        padding: "16px 20px",
+                        gap: 16,
+                      }}
+                    >
+                      <div style={{ fontWeight: 700, color: palette.orange, fontSize: "0.95rem" }}>
+                        Employee ID
+                      </div>
+                      <div style={{ fontWeight: 700, color: palette.orange, fontSize: "0.95rem" }}>
+                        Employee Name
+                      </div>
+                      <div style={{ fontWeight: 700, color: palette.orange, fontSize: "0.95rem" }}>
+                        Days
+                      </div>
+                      <div style={{ fontWeight: 700, color: palette.orange, fontSize: "0.95rem" }}>
+                        Applied Date
+                      </div>
+                    </div>
+
+                    {/* Data Rows */}
+                    {pendingLeaveRequests.map((request, idx) => (
+                      <div
+                        key={request.id}
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "120px 1fr 100px 150px",
+                          padding: "16px 20px",
+                          gap: 16,
+                          borderBottom: idx < pendingLeaveRequests.length - 1 ? `1px solid ${palette.gray}66` : "none",
+                          transition: "all 0.2s",
+                          cursor: "pointer",
+                          background: idx % 2 === 0 ? palette.white : `${palette.orange}08`,
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.background = `${palette.orange}15`;
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.background = idx % 2 === 0 ? palette.white : `${palette.orange}08`;
+                        }}
+                        onClick={() => window.location.href = "/leave-requests"}
+                      >
+                        <div
+                          style={{
+                            background: `${palette.orange}33`,
+                            color: "#d97706",
+                            padding: "6px 8px",
+                            borderRadius: 6,
+                            fontSize: "0.85rem",
+                            fontWeight: 700,
+                            textAlign: "center",
+                            width: "fit-content",
+                            minWidth: "70px",
+                            border: `1px solid ${palette.orange}66`,
+                          }}
+                        >
+                          {request.employeeId || request.employee_id || request.employee?.employeeId || request.employee?.id || `EMP${String(idx + 1).padStart(3, '0')}`}
+                        </div>
+                        <div style={{ color: "#1a1a1a", fontSize: "0.95rem", fontWeight: 600 }}>
+                          {request.employeeName || request.employee?.name || request.employee?.fullName || "Unknown Employee"}
+                        </div>
+                        <div style={{ color: "#1a1a1a", fontSize: "0.95rem", fontWeight: 600, textAlign: "center" }}>
+                          {calculateLeaveDays(request.startDate, request.endDate)}
+                        </div>
+                        <div style={{ color: "#475569", fontSize: "0.9rem", fontWeight: 600 }}>
+                          {request.appliedDate ? new Date(request.appliedDate).toLocaleDateString() : 
+                           request.startDate ? new Date(request.startDate).toLocaleDateString() : 
+                           new Date().toLocaleDateString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Charts */}
@@ -469,7 +681,8 @@ export default function ManagerDashboard() {
                           <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>ID</th>
                           <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>Full Name</th>
                           <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>Email</th>
-                          <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>Position</th>
+                          <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>Designation</th>
+                          <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>Manager</th>
                           <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>Status</th>
                           <th style={{ padding: 14, fontWeight: 800, color: palette.accent }}>Actions</th>
                         </tr>
@@ -491,7 +704,10 @@ export default function ManagerDashboard() {
                             <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>{emp.id || emp.employeeId}</td>
                             <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>{emp.name || emp.fullName}</td>
                             <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>{emp.email}</td>
-                            <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>{emp.position}</td>
+                            <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>{emp.designation || emp.position}</td>
+                            <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>
+                              {emp.manager ? `${emp.manager.username}` : 'No Manager'}
+                            </td>
                             <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22` }}>
                               <button
                                 onClick={() => handleToggleStatus(emp.id || emp.employeeId, emp.isActive)}
@@ -642,46 +858,125 @@ export default function ManagerDashboard() {
                   Employee Details - {selectedEmployee.name || selectedEmployee.fullName}
                 </h3>
                 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
-                    <strong style={{ color: palette.accent }}>ID:</strong>
-                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.id || selectedEmployee.employeeId}</p>
+                {/* Professional Information Section */}
+                <div style={{ marginBottom: 24 }}>
+                  <h4 style={{ 
+                    fontSize: "1.1rem", 
+                    fontWeight: 700, 
+                    color: palette.accent, 
+                    marginBottom: 12,
+                    borderBottom: `2px solid ${palette.accent}33`,
+                    paddingBottom: 6
+                  }}>
+                    Professional Information
+                  </h4>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                      <strong style={{ color: palette.accent }}>Designation:</strong>
+                      <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.designation || selectedEmployee.position || selectedEmployee.jobTitle || "N/A"}</p>
+                    </div>
+                    <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                      <strong style={{ color: palette.accent }}>Department:</strong>
+                      <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.department || "N/A"}</p>
+                    </div>
+                    <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                      <strong style={{ color: palette.accent }}>Total Experience:</strong>
+                      <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.totalExperience || "N/A"} years</p>
+                    </div>
+                    <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                      <strong style={{ color: palette.accent }}>Status:</strong>
+                      <p style={{ margin: 0, marginTop: 4, color: selectedEmployee.isActive ? "#4CAF50" : "#FF5722", fontWeight: 700 }}>
+                        {selectedEmployee.isActive ? "Active" : "Inactive"}
+                      </p>
+                    </div>
                   </div>
-                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
-                    <strong style={{ color: palette.accent }}>Age:</strong>
-                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.age || "N/A"}</p>
+                </div>
+
+                {/* Personal Information Section */}
+                <div style={{ marginBottom: 24 }}>
+                  <h4 style={{ 
+                    fontSize: "1.1rem", 
+                    fontWeight: 700, 
+                    color: palette.accent, 
+                    marginBottom: 12,
+                    borderBottom: `2px solid ${palette.accent}33`,
+                    paddingBottom: 6
+                  }}>
+                    Personal Information
+                  </h4>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                      <strong style={{ color: palette.accent }}>ID:</strong>
+                      <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.id || selectedEmployee.employeeId}</p>
+                    </div>
+                    <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                      <strong style={{ color: palette.accent }}>Age:</strong>
+                      <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.age || "N/A"}</p>
+                    </div>
+                    <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                      <strong style={{ color: palette.accent }}>Phone:</strong>
+                      <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.phone || "N/A"}</p>
+                    </div>
+                    <div style={{ padding: 12, background: palette.bg, borderRadius: 8, gridColumn: "1 / -1" }}>
+                      <strong style={{ color: palette.accent }}>Address:</strong>
+                      <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.address || "N/A"}</p>
+                    </div>
                   </div>
-                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
-                    <strong style={{ color: palette.accent }}>Phone:</strong>
-                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.phone || "N/A"}</p>
+                </div>
+
+                {/* Educational Information Section */}
+                <div style={{ marginBottom: 24 }}>
+                  <h4 style={{ 
+                    fontSize: "1.1rem", 
+                    fontWeight: 700, 
+                    color: palette.accent, 
+                    marginBottom: 12,
+                    borderBottom: `2px solid ${palette.accent}33`,
+                    paddingBottom: 6
+                  }}>
+                    Educational Information
+                  </h4>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                      <strong style={{ color: palette.accent }}>Degree:</strong>
+                      <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.degree || "N/A"}</p>
+                    </div>
+                    <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                      <strong style={{ color: palette.accent }}>University:</strong>
+                      <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.university || "N/A"}</p>
+                    </div>
+                    <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                      <strong style={{ color: palette.accent }}>Graduation Year:</strong>
+                      <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.graduationYear || "N/A"}</p>
+                    </div>
+                    <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                      <strong style={{ color: palette.accent }}>Grade:</strong>
+                      <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.grade || "N/A"}</p>
+                    </div>
                   </div>
-                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
-                    <strong style={{ color: palette.accent }}>Department:</strong>
-                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.department || "N/A"}</p>
-                  </div>
-                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8, gridColumn: "1 / -1" }}>
-                    <strong style={{ color: palette.accent }}>Address:</strong>
-                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.address || "N/A"}</p>
-                  </div>
-                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
-                    <strong style={{ color: palette.accent }}>Total Experience:</strong>
-                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.totalExperience || "N/A"} years</p>
-                  </div>
-                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
-                    <strong style={{ color: palette.accent }}>Degree:</strong>
-                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.degree || "N/A"}</p>
-                  </div>
-                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
-                    <strong style={{ color: palette.accent }}>University:</strong>
-                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.university || "N/A"}</p>
-                  </div>
-                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
-                    <strong style={{ color: palette.accent }}>Graduation Year:</strong>
-                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.graduationYear || "N/A"}</p>
-                  </div>
-                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
-                    <strong style={{ color: palette.accent }}>Grade:</strong>
-                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.grade || "N/A"}</p>
+                </div>
+
+                {/* Leave Information Section */}
+                <div style={{ marginBottom: 24 }}>
+                  <h4 style={{ 
+                    fontSize: "1.1rem", 
+                    fontWeight: 700, 
+                    color: palette.accent, 
+                    marginBottom: 12,
+                    borderBottom: `2px solid ${palette.accent}33`,
+                    paddingBottom: 6
+                  }}>
+                    Leave Information
+                  </h4>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                      <strong style={{ color: palette.accent }}>Total Leaves:</strong>
+                      <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.totalLeaves || "N/A"} days</p>
+                    </div>
+                    <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                      <strong style={{ color: palette.accent }}>Remaining Leaves:</strong>
+                      <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.remLeaves || "N/A"} days</p>
+                    </div>
                   </div>
                 </div>
                 

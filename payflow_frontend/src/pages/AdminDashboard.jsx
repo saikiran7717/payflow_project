@@ -146,10 +146,67 @@ export default function AdminDashboard({ active }) {
   };
 
   // Handle employee details modal
-  const handleShowEmployeeDetails = (emp) => {
+  const handleShowEmployeeDetails = useCallback(async (emp) => {
     setSelectedEmployee(emp);
     setShowDetailsModal(true);
-  };
+    
+    // Fetch updated employee information and leave data
+    try {
+      const employeeId = emp.employeeId || emp.id;
+      
+      // First, fetch the complete employee profile to get accurate totalLeaves
+      const employeeResponse = await fetch(`/api/employees/${employeeId}`, {
+        method: "GET",
+        credentials: "include",
+      });
+      
+      let completeEmployeeData = emp; // Fallback to original data
+      if (employeeResponse.ok) {
+        completeEmployeeData = await employeeResponse.json();
+      }
+      
+      // Then fetch employee's leave data to calculate correct remaining leaves
+      const leavesResponse = await fetch(`/api/leaves/${employeeId}`, {
+        method: "GET",
+        credentials: "include",
+      });
+      
+      let leaveData = [];
+      if (leavesResponse.ok) {
+        leaveData = await leavesResponse.json();
+      }
+      
+      // Calculate leave statistics exactly like Employee Dashboard does
+      const totalLeaves = completeEmployeeData.totalLeaves || 12; // Use complete employee data
+      
+      const usedLeaves = leaveData
+        .filter(leave => leave.status?.toLowerCase() === 'approved')
+        .reduce((total, leave) => {
+          const start = new Date(leave.startDate);
+          const end = new Date(leave.endDate);
+          const diffTime = Math.abs(end - start);
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+          return total + diffDays;
+        }, 0);
+      
+      const remainingLeaves = totalLeaves - usedLeaves;
+      const pendingLeaves = leaveData.filter(leave => leave.status?.toLowerCase() === 'pending').length;
+      
+      // Update the selected employee with complete data and correct leave calculations
+      setSelectedEmployee(prev => ({
+        ...completeEmployeeData, // Use complete employee data instead of list data
+        totalLeaves: totalLeaves,
+        usedLeaves: usedLeaves,
+        remLeaves: remainingLeaves,
+        pendingLeaves: pendingLeaves,
+        leaveData: leaveData // Store the leave data for reference
+      }));
+      
+    } catch (error) {
+      console.error("Error fetching employee data:", error);
+      // Keep original employee data if there's an error
+    }
+  }, []);
 
   const handleCloseDetailsModal = () => {
     setShowDetailsModal(false);
@@ -475,7 +532,7 @@ export default function AdminDashboard({ active }) {
               letterSpacing: 0.5,
             }}
           >
-            <FaHome /> Dashboard
+            <FaHome /> Admin Dashboard
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
@@ -777,20 +834,6 @@ export default function AdminDashboard({ active }) {
                   Employee List
                 </button>
               </div>
-              <h3
-                style={{
-                  fontWeight: 800,
-                  marginBottom: 18,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  color: palette.accent,
-                  fontSize: "1.25rem",
-                  letterSpacing: 0.2,
-                }}
-              >
-                <FaUsers /> {showEmployees ? "Employee List" : "User List"}
-              </h3>
               {loading ? (
                 <p style={{ color: palette.accent, fontWeight: 600, fontSize: "1.1rem" }}>Loading {showEmployees ? "employees" : "users"}...</p>
               ) : error ? (
@@ -825,7 +868,7 @@ export default function AdminDashboard({ active }) {
                             <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>ID</th>
                             <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>Full Name</th>
                             <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>Email</th>
-                            <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>Position</th>
+                            <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>Designation</th>
                             <th style={{ padding: 14, fontWeight: 800, color: palette.accent }}>Actions</th>
                           </tr>
                         </thead>
@@ -846,7 +889,7 @@ export default function AdminDashboard({ active }) {
                               <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>{emp.id || emp.employeeId}</td>
                               <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>{emp.name || emp.fullName}</td>
                               <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>{emp.email}</td>
-                              <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>{emp.position}</td>
+                              <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>{emp.designation || emp.position}</td>
                               <td style={{ padding: 14 }}>
                                 <button
                                   style={{
@@ -1206,46 +1249,145 @@ export default function AdminDashboard({ active }) {
                 Employee Details - {selectedEmployee.name || selectedEmployee.fullName}
               </h3>
               
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-                <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
-                  <strong style={{ color: palette.accent }}>ID:</strong>
-                  <p style={{ margin: 0, marginTop: 4, color: palette.dark, fontWeight: 600 }}>{selectedEmployee.id || selectedEmployee.employeeId}</p>
+              {/* Personal Information Section */}
+              <div style={{ marginBottom: 28 }}>
+                <h4 style={{ fontWeight: 700, color: palette.accent, marginBottom: 16, fontSize: "1.15rem", borderBottom: `2px solid ${palette.accent}`, paddingBottom: 8 }}>
+                  Personal Information
+                </h4>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                    <strong style={{ color: palette.accent }}>Employee ID:</strong>
+                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.id || selectedEmployee.employeeId}</p>
+                  </div>
+                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                    <strong style={{ color: palette.accent }}>Full Name:</strong>
+                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.name || selectedEmployee.fullName || "N/A"}</p>
+                  </div>
+                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                    <strong style={{ color: palette.accent }}>Email:</strong>
+                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.email || "N/A"}</p>
+                  </div>
+                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                    <strong style={{ color: palette.accent }}>Phone:</strong>
+                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.phone || selectedEmployee.phoneNumber || "N/A"}</p>
+                  </div>
+                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                    <strong style={{ color: palette.accent }}>Age:</strong>
+                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.age || "N/A"}</p>
+                  </div>
+                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                    <strong style={{ color: palette.accent }}>Gender:</strong>
+                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.gender || "N/A"}</p>
+                  </div>
+                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8, gridColumn: "1 / -1" }}>
+                    <strong style={{ color: palette.accent }}>Address:</strong>
+                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.address || "N/A"}</p>
+                  </div>
                 </div>
-                <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
-                  <strong style={{ color: palette.accent }}>Age:</strong>
-                  <p style={{ margin: 0, marginTop: 4, color: palette.dark, fontWeight: 600 }}>{selectedEmployee.age || "N/A"}</p>
+              </div>
+
+              {/* Professional Information Section */}
+              <div style={{ marginBottom: 28 }}>
+                <h4 style={{ fontWeight: 700, color: palette.accent, marginBottom: 16, fontSize: "1.15rem", borderBottom: `2px solid ${palette.accent}`, paddingBottom: 8 }}>
+                  Professional Information
+                </h4>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                    <strong style={{ color: palette.accent }}>Designation:</strong>
+                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.designation || selectedEmployee.position || selectedEmployee.jobTitle || "N/A"}</p>
+                  </div>
+                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                    <strong style={{ color: palette.accent }}>Department:</strong>
+                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.department || "N/A"}</p>
+                  </div>
+                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                    <strong style={{ color: palette.accent }}>Total Experience:</strong>
+                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.totalExperience || "N/A"} years</p>
+                  </div>
+                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                    <strong style={{ color: palette.accent }}>Status:</strong>
+                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>
+                      <span style={{ 
+                        color: selectedEmployee.isActive ? palette.green : palette.red,
+                        fontWeight: 700,
+                        padding: "2px 8px",
+                        borderRadius: 4,
+                        background: selectedEmployee.isActive ? `${palette.green}22` : `${palette.red}22`
+                      }}>
+                        {selectedEmployee.isActive ? "Active" : "Inactive"}
+                      </span>
+                    </p>
+                  </div>
+                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                    <strong style={{ color: palette.accent }}>Onboarded Date:</strong>
+                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>
+                      {selectedEmployee.onboardedAt ? new Date(selectedEmployee.onboardedAt).toLocaleDateString() : "N/A"}
+                    </p>
+                  </div>
                 </div>
-                <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
-                  <strong style={{ color: palette.accent }}>Phone:</strong>
-                  <p style={{ margin: 0, marginTop: 4, color: palette.dark, fontWeight: 600 }}>{selectedEmployee.phone || "N/A"}</p>
+              </div>
+
+              {/* Educational Information Section */}
+              <div style={{ marginBottom: 28 }}>
+                <h4 style={{ fontWeight: 700, color: palette.accent, marginBottom: 16, fontSize: "1.15rem", borderBottom: `2px solid ${palette.accent}`, paddingBottom: 8 }}>
+                  Educational Information
+                </h4>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                    <strong style={{ color: palette.accent }}>Degree:</strong>
+                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.degree || "N/A"}</p>
+                  </div>
+                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                    <strong style={{ color: palette.accent }}>University:</strong>
+                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.university || "N/A"}</p>
+                  </div>
+                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                    <strong style={{ color: palette.accent }}>Graduation Year:</strong>
+                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.graduationYear || "N/A"}</p>
+                  </div>
+                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                    <strong style={{ color: palette.accent }}>Grade/CGPA:</strong>
+                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.grade || selectedEmployee.cgpa || "N/A"}</p>
+                  </div>
                 </div>
-                <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
-                  <strong style={{ color: palette.accent }}>Department:</strong>
-                  <p style={{ margin: 0, marginTop: 4, color: palette.dark, fontWeight: 600 }}>{selectedEmployee.department || "N/A"}</p>
-                </div>
-                <div style={{ padding: 12, background: palette.bg, borderRadius: 8, gridColumn: "1 / -1" }}>
-                  <strong style={{ color: palette.accent }}>Address:</strong>
-                  <p style={{ margin: 0, marginTop: 4, color: palette.dark, fontWeight: 600 }}>{selectedEmployee.address || "N/A"}</p>
-                </div>
-                <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
-                  <strong style={{ color: palette.accent }}>Total Experience:</strong>
-                  <p style={{ margin: 0, marginTop: 4, color: palette.dark, fontWeight: 600 }}>{selectedEmployee.totalExperience || "N/A"} years</p>
-                </div>
-                <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
-                  <strong style={{ color: palette.accent }}>Degree:</strong>
-                  <p style={{ margin: 0, marginTop: 4, color: palette.dark, fontWeight: 600 }}>{selectedEmployee.degree || "N/A"}</p>
-                </div>
-                <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
-                  <strong style={{ color: palette.accent }}>University:</strong>
-                  <p style={{ margin: 0, marginTop: 4, color: palette.dark, fontWeight: 600 }}>{selectedEmployee.university || "N/A"}</p>
-                </div>
-                <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
-                  <strong style={{ color: palette.accent }}>Graduation Year:</strong>
-                  <p style={{ margin: 0, marginTop: 4, color: palette.dark, fontWeight: 600 }}>{selectedEmployee.graduationYear || "N/A"}</p>
-                </div>
-                <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
-                  <strong style={{ color: palette.accent }}>Grade:</strong>
-                  <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>{selectedEmployee.grade || "N/A"}</p>
+              </div>
+
+              {/* Leave Information Section */}
+              <div style={{ marginBottom: 28 }}>
+                <h4 style={{ fontWeight: 700, color: palette.accent, marginBottom: 16, fontSize: "1.15rem", borderBottom: `2px solid ${palette.accent}`, paddingBottom: 8 }}>
+                  Leave Information
+                </h4>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                    <strong style={{ color: palette.accent }}>Total Leaves Allocated:</strong>
+                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>
+                      {selectedEmployee.totalLeaves || "12"} days
+                    </p>
+                  </div>
+                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                    <strong style={{ color: palette.accent }}>Leaves Used:</strong>
+                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>
+                      <span style={{ color: palette.red, fontWeight: 700 }}>
+                        {selectedEmployee.usedLeaves !== undefined ? selectedEmployee.usedLeaves : "0"} days
+                      </span>
+                    </p>
+                  </div>
+                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                    <strong style={{ color: palette.accent }}>Remaining Leaves:</strong>
+                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>
+                      <span style={{ color: palette.green, fontWeight: 700 }}>
+                        {selectedEmployee.remLeaves !== undefined ? selectedEmployee.remLeaves : "N/A"} days
+                      </span>
+                    </p>
+                  </div>
+                  <div style={{ padding: 12, background: palette.bg, borderRadius: 8 }}>
+                    <strong style={{ color: palette.accent }}>Pending Requests:</strong>
+                    <p style={{ margin: 0, marginTop: 4, color: "#1a1a1a", fontWeight: 600 }}>
+                      <span style={{ color: palette.orange, fontWeight: 700 }}>
+                        {selectedEmployee.pendingLeaves !== undefined ? selectedEmployee.pendingLeaves : "0"} requests
+                      </span>
+                    </p>
+                  </div>
                 </div>
               </div>
               

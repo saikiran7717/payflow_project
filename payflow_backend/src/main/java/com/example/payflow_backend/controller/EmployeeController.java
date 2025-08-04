@@ -1,6 +1,5 @@
 package com.example.payflow_backend.controller;
 
-import com.example.payflow_backend.dto.AuthRequest;
 import com.example.payflow_backend.model.Employee;
 import com.example.payflow_backend.model.PastExperience;
 import com.example.payflow_backend.model.User;
@@ -16,7 +15,6 @@ import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -39,7 +37,6 @@ public class EmployeeController {
     private final UserRepository userRepository;
     private final PastExperienceService pastExperienceService;
 
-    @Autowired private AuthenticationManager authManager;
     @Autowired private EmployeeRepository employeeRepo;
 
     public EmployeeController(EmployeeService service, EmailService emailService,
@@ -55,59 +52,152 @@ public class EmployeeController {
     // ✅ Modified Add Employee (Handles pastExperiences directly)
     @PreAuthorize("hasAnyRole('HR','MANAGER')")
     @PostMapping("/add")
-    public ResponseEntity<String> addEmployee(@RequestBody Employee employee) {
-        if (service.existsByEmail(employee.getEmail())) {
-            return ResponseEntity.badRequest().body("Employee with this email already exists.");
-        }
+    public ResponseEntity<String> addEmployee(@RequestBody Map<String, Object> employeeData, Authentication authentication) {
+        try {
+            Employee employee = new Employee();
+            employee.setFullName((String) employeeData.get("fullName"));
+            employee.setEmail((String) employeeData.get("email"));
+            employee.setAge(((Number) employeeData.get("age")).intValue());
+            employee.setPhone((String) employeeData.get("phone"));
+            employee.setGender((String) employeeData.get("gender"));
+            employee.setAddress((String) employeeData.get("address"));
+            employee.setDegree((String) employeeData.get("degree"));
+            employee.setUniversity((String) employeeData.get("university"));
+            employee.setGraduationYear((String) employeeData.get("graduationYear"));
+            employee.setGrade((String) employeeData.get("grade"));
+            employee.setDesignation((String) employeeData.get("designation"));
+            employee.setDepartment((String) employeeData.get("department"));
+            employee.setTotalLeaves(((Number) employeeData.get("totalLeaves")).intValue());
+            employee.setRemLeaves(((Number) employeeData.get("totalLeaves")).intValue());
+            employee.setTotalExperience(((Number) employeeData.get("totalExperience")).intValue());
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
-
-        User onboardedBy = userRepository.findByEmail(username).orElse(null);
-        if (onboardedBy == null) {
-            return ResponseEntity.status(401).body("Unauthorized or user not found.");
-        }
-
-        String tempPassword = UUID.randomUUID().toString().substring(0, 8);
-        String hashedPassword = passwordEncoder.encode(tempPassword);
-
-        employee.setPasswordHash(hashedPassword);
-        employee.setIsTempPassword(true);
-        employee.setOnboardedBy(onboardedBy);
-        employee.setOnboardedAt(java.time.LocalDateTime.now());
-
-        // Extract and detach past experiences before saving
-        List<PastExperience> experiences = employee.getPastExperiences();
-        employee.setPastExperiences(null); // Avoid circular save issue
-
-        Employee savedEmployee = service.addEmployee(employee);
-
-        // Link and save experiences (if any)
-        if (experiences != null && !experiences.isEmpty()) {
-            for (PastExperience exp : experiences) {
-                exp.setEmployee(savedEmployee);
+            if (service.existsByEmail(employee.getEmail())) {
+                return ResponseEntity.badRequest().body("Employee with this email already exists.");
             }
-            pastExperienceService.saveAllExperiences(experiences, savedEmployee.getEmployeeId());
-        }
 
-        emailService.sendCredentials(employee.getEmail(), tempPassword);
-        return ResponseEntity.ok("Employee added and credentials emailed successfully.");
+            String username = authentication.getName();
+            User onboardedBy = userRepository.findByEmail(username).orElse(null);
+            if (onboardedBy == null) {
+                return ResponseEntity.status(401).body("Unauthorized or user not found.");
+            }
+
+            // Handle manager assignment based on user role
+            User manager = null;
+            if ("HR".equals(onboardedBy.getRole())) {
+                // HR can select any manager
+                Long managerId = employeeData.get("managerId") != null ? 
+                    ((Number) employeeData.get("managerId")).longValue() : null;
+                
+                if (managerId != null) {
+                    manager = userRepository.findById(managerId).orElse(null);
+                    if (manager == null || !"MANAGER".equals(manager.getRole())) {
+                        return ResponseEntity.badRequest().body("Invalid manager selected.");
+                    }
+                }
+            } else if ("MANAGER".equals(onboardedBy.getRole())) {
+                // Manager can only assign themselves as manager
+                manager = onboardedBy;
+            }
+            
+            employee.setManager(manager);
+
+            String tempPassword = UUID.randomUUID().toString().substring(0, 8);
+
+            employee.setPasswordHash(tempPassword);
+            employee.setIsTempPassword(true);
+            employee.setOnboardedBy(onboardedBy);
+            employee.setOnboardedAt(java.time.LocalDateTime.now());
+
+            // Handle past experiences
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> experiencesData = (List<Map<String, Object>>) employeeData.get("pastExperiences");
+            List<PastExperience> experiences = new ArrayList<>();
+            
+            if (experiencesData != null) {
+                for (Map<String, Object> expData : experiencesData) {
+                    PastExperience exp = new PastExperience();
+                    exp.setCompanyName((String) expData.get("companyName"));
+                    exp.setRole((String) expData.get("role"));
+                    exp.setYearsOfExperience(((Number) expData.get("years")).intValue());
+                    experiences.add(exp);
+                }
+            }
+
+            Employee savedEmployee = service.addEmployee(employee);
+
+            // Link and save experiences (if any)
+            if (!experiences.isEmpty()) {
+                for (PastExperience exp : experiences) {
+                    exp.setEmployee(savedEmployee);
+                }
+                pastExperienceService.saveAllExperiences(experiences, savedEmployee.getEmployeeId());
+            }
+
+            emailService.sendCredentials(employee.getEmail(), tempPassword);
+            return ResponseEntity.ok("Employee added and credentials emailed successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error adding employee: " + e.getMessage());
+        }
     }
 
     @GetMapping("/getAll")
-    public ResponseEntity<List<Employee>> getAllEmployees() {
+    public ResponseEntity<List<Employee>> getAllEmployees(Authentication authentication) {
+        // Check if the user is a manager
+        if (authentication != null) {
+            String email = authentication.getName();
+            User currentUser = userRepository.findByEmail(email).orElse(null);
+            
+            if (currentUser != null && "MANAGER".equals(currentUser.getRole())) {
+                // Manager can only see their own employees
+                List<Employee> managedEmployees = employeeRepo.findByManagerUserIdAndIsActiveTrue(currentUser.getUserId());
+                return ResponseEntity.ok(managedEmployees);
+            }
+        }
+        
+        // HR and ADMIN can see all employees
         List<Employee> employees = service.getAll();
         return ResponseEntity.ok(employees);
+    }
+
+    @GetMapping("/managers")
+    public ResponseEntity<List<User>> getAllManagers() {
+        List<User> managers = userRepository.findAllActiveManagers();
+        return ResponseEntity.ok(managers);
+    }
+
+    @GetMapping("/current-user-role")
+    public ResponseEntity<Map<String, String>> getCurrentUserRole(Authentication authentication) {
+        if (authentication == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+        
+        String email = authentication.getName();
+        User currentUser = userRepository.findByEmail(email).orElse(null);
+        
+        if (currentUser == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "User not found"));
+        }
+        
+        return ResponseEntity.ok(Map.of(
+            "role", currentUser.getRole(),
+            "userId", currentUser.getUserId().toString(),
+            "username", currentUser.getUsername()
+        ));
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> req, HttpServletRequest request) {
         String email = req.get("email");
         String password = req.get("password");
-
         Employee emp = service.login(email, password);
+        System.out.println("Login attempt for email: " + email);
+        System.out.println("is Employee null : " + (emp == null));
         if (emp == null) {
             return ResponseEntity.status(401).body(Map.of("error", "Invalid email or password"));
+        }
+
+        if (!emp.getIsActive()) { // status == false means disabled
+            return ResponseEntity.status(403).body(Map.of("error", "Your account is disabled. Please contact admin."));
         }
 
         UsernamePasswordAuthenticationToken authToken =
@@ -165,10 +255,11 @@ public class EmployeeController {
 
     @GetMapping("/me")
     public ResponseEntity<?> getProfile(Authentication auth) {
+        System.out.println("======fetching profile using me ======================");
         if (auth == null) {
             return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
-
+        System.out.println(" authentication: " + auth.getName());
         String email = auth.getName();
         Employee emp = employeeRepo.findByEmail(email).orElse(null);
 
@@ -178,6 +269,37 @@ public class EmployeeController {
 
         return ResponseEntity.ok(emp);
     }
+
+    @PreAuthorize("hasAnyRole('HR','MANAGER','ADMIN')")
+    @GetMapping("/{employeeId}")
+    public ResponseEntity<?> getEmployeeById(@PathVariable Long employeeId, Authentication authentication) {
+        try {
+            Employee emp = employeeRepo.findById(employeeId).orElse(null);
+
+            if (emp == null) {
+                return ResponseEntity.status(404).body(Map.of("error", "Employee not found with ID: " + employeeId));
+            }
+
+            // Check if the user is a manager and if they can access this employee
+            if (authentication != null) {
+                String email = authentication.getName();
+                User currentUser = userRepository.findByEmail(email).orElse(null);
+                
+                if (currentUser != null && "MANAGER".equals(currentUser.getRole())) {
+                    // Manager can only see their own employees
+                    if (emp.getManager() == null || !emp.getManager().getUserId().equals(currentUser.getUserId())) {
+                        return ResponseEntity.status(403).body(Map.of("error", "Access denied. You can only view your own employees."));
+                    }
+                }
+            }
+
+            return ResponseEntity.ok(emp);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Error fetching employee details"));
+        }
+    }
+
+
 
     // --------------------------
     // Past Experience Endpoints
@@ -230,4 +352,6 @@ public class EmployeeController {
         employeeRepo.save(employee);
         return ResponseEntity.ok(employee);
     }
+
+
 }

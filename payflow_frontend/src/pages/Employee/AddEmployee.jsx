@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import Sidebar from "../../components/Sidebar";
+import DynamicNavigation from "../../components/DynamicNavigation";
 import { ToastContainer, toast } from "react-toastify";
 import { FaHome, FaUser } from "react-icons/fa";
 import { useAuth } from "../../authContext.jsx";
@@ -9,12 +10,57 @@ import "react-toastify/dist/ReactToastify.css";
 export default function AddEmployee() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [currentTime, setCurrentTime] = useState(() => new Date());
   
   React.useEffect(() => {
-    const interval = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(interval);
+    // Fetch managers and current user role when component mounts
+    fetchCurrentUserRole();
+    fetchManagers();
   }, []);
+
+  const fetchCurrentUserRole = async () => {
+    try {
+      const res = await fetch("/api/employees/current-user-role");
+      if (res.ok) {
+        const userData = await res.json();
+        console.log("User data received:", userData); // Debug log
+        setCurrentUserRole(userData.role);
+        setCurrentUser(userData);
+        
+        // If user is a manager, auto-set managerId to themselves
+        if (userData.role === "MANAGER") {
+          setForm(prev => ({ ...prev, managerId: userData.userId }));
+        }
+      } else {
+        console.error("Failed to fetch user role:", res.status);
+        // Fallback: assume HR role if API fails
+        setCurrentUserRole("HR");
+      }
+    } catch (error) {
+      console.error("Error fetching current user role:", error);
+      // Fallback: assume HR role if network error
+      setCurrentUserRole("HR");
+    }
+  };
+
+  const fetchManagers = async () => {
+    setManagersLoading(true);
+    try {
+      const res = await fetch("/api/employees/managers");
+      if (res.ok) {
+        const managersData = await res.json();
+        console.log("Managers data received:", managersData); // Debug log
+        setManagers(managersData);
+      } else {
+        console.error("Failed to fetch managers:", res.status);
+        setManagers([]); // Set empty array if API fails
+      }
+    } catch (error) {
+      console.error("Error fetching managers:", error);
+      setManagers([]); // Set empty array if network error
+    } finally {
+      setManagersLoading(false);
+    }
+  };
 
   const palette = {
     accent: "#6366f1",
@@ -29,17 +75,25 @@ export default function AddEmployee() {
     age: "",
     phone: "",
     address: "",
+    gender: "",
     degree: "",
     university: "",
     graduationYear: "",
     grade: "",
-    position: "",
+    designation: "",
+    department: "",
+    totalLeaves: "",
+    managerId: "",
     pastExperiences: [
       { companyName: "", role: "", years: "" }
     ]
   });
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
+  const [managers, setManagers] = useState([]);
+  const [managersLoading, setManagersLoading] = useState(false);
+  const [currentUserRole, setCurrentUserRole] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
 
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -64,15 +118,22 @@ export default function AddEmployee() {
   };
 
   const validatePage1 = () => {
-    return form.fullName && form.email && form.age && form.phone && form.address;
+    return form.fullName && form.email && form.age && form.phone && form.address && form.gender;
   };
   const validatePage2 = () => {
     // Require all education fields for page 2
     return form.degree && form.university && form.graduationYear && form.grade;
   };
   const validatePage3 = () => {
-    // Position is required for page 3
-    if (!form.position.trim()) return false;
+    // Designation, department and totalLeaves are always required
+    if (!form.designation.trim() || !form.department.trim() || !form.totalLeaves.trim()) return false;
+    
+    // Manager validation based on role
+    if (currentUserRole === "HR") {
+      // HR must select a manager
+      if (!form.managerId.trim()) return false;
+    }
+    // For MANAGER role, managerId is auto-set, so no validation needed
     
     // Past experience is optional - we can have no experiences OR only complete experiences
     // Filter out completely empty experiences first
@@ -119,38 +180,60 @@ export default function AddEmployee() {
         return sum + (Number(exp.years) || 0);
       }, 0);
       
+      const employeeData = {
+        fullName: form.fullName,
+        email: form.email,
+        age: Number(form.age),
+        phone: form.phone,
+        address: form.address,
+        gender: form.gender,
+        degree: form.degree,
+        university: form.university,
+        graduationYear: form.graduationYear,
+        grade: form.grade,
+        designation: form.designation,
+        department: form.department, // Explicitly include department
+        totalLeaves: Number(form.totalLeaves),
+        remLeaves: Number(form.totalLeaves), // Initially same as totalLeaves
+        totalExperience,
+        managerId: Number(form.managerId),
+        pastExperiences: validExperiences.map(exp => ({
+          companyName: exp.companyName,
+          role: exp.role,
+          years: Number(exp.years),
+          yearsOfExperience: Number(exp.years)
+        }))
+      };
+      
+      console.log("Sending employee data to backend:", employeeData); // Debug log
+      
       const res = await fetch("/api/employees/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          age: Number(form.age),
-          totalExperience,
-          pastExperiences: validExperiences.map(exp => ({
-            companyName: exp.companyName,
-            role: exp.role,
-            years: Number(exp.years),
-            yearsOfExperience: Number(exp.years)
-          }))
-        })
+        body: JSON.stringify(employeeData)
       });
       if (!res.ok) throw new Error("Failed to add employee");
       toast.success("Employee added successfully!");
       
       // Reset form
-      setForm({
+      const resetForm = {
         fullName: "",
         email: "",
         age: "",
         phone: "",
         address: "",
+        gender: "",
         degree: "",
         university: "",
         graduationYear: "",
         grade: "",
-        position: "",
+        designation: "",
+        department: "",
+        totalLeaves: "",
+        managerId: currentUserRole === "MANAGER" ? currentUser?.userId || "" : "",
         pastExperiences: [{ companyName: "", role: "", years: "" }]
-      });
+      };
+      setForm(resetForm);
       setPage(1);
       
       // Redirect to employee list after short delay to show toast
@@ -185,6 +268,15 @@ export default function AddEmployee() {
           <label style={labelStyle}>Phone</label>
           <input name="phone" value={form.phone} onChange={handleChange} style={inputStyle} />
         </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <label style={labelStyle}>Gender</label>
+          <select name="gender" value={form.gender} onChange={handleChange} style={inputStyle}>
+            <option value="">Select Gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Others">Others</option>
+          </select>
+        </div>
         <div style={{ gridColumn: "1 / span 2", display: "flex", flexDirection: "column", gap: 10 }}>
           <label style={labelStyle}>Address</label>
           <input name="address" value={form.address} onChange={handleChange} style={inputStyle} />
@@ -213,20 +305,129 @@ export default function AddEmployee() {
         </div>
       </div>
     </div>,
-    // Page 3: Position and Past Experience
+    // Page 3: Designation and Past Experience
     <div>
-      <h3 style={{ fontWeight: 700, fontSize: "1.25rem", color: "#6366f1", marginBottom: 18, letterSpacing: 0.5 }}>Position & Experience</h3>
+      <h3 style={{ fontWeight: 700, fontSize: "1.25rem", color: "#6366f1", marginBottom: 18, letterSpacing: 0.5 }}>Designation & Experience</h3>
       
-      {/* Position Field */}
-      <div style={{ marginBottom: 24 }}>
-        <label style={labelStyle}>Position</label>
-        <input 
-          name="position" 
-          value={form.position} 
-          onChange={handleChange} 
-          placeholder="Enter job position/title"
-          style={inputStyle} 
-        />
+      {/* Designation, Department, Manager and Total Leaves Fields */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 60, rowGap: 18, marginBottom: 24 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <label style={labelStyle}>Designation</label>
+          <input 
+            name="designation" 
+            value={form.designation} 
+            onChange={handleChange} 
+            placeholder="Enter job designation/title"
+            style={inputStyle} 
+          />
+        </div>
+        
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <label style={labelStyle}>Department</label>
+          <select 
+            name="department" 
+            value={form.department} 
+            onChange={handleChange} 
+            style={inputStyle}
+          >
+            <option value="">Select Department</option>
+            <option value="Human Resources">Human Resources</option>
+            <option value="Engineering">Engineering</option>
+            <option value="Marketing">Marketing</option>
+            <option value="Sales">Sales</option>
+            <option value="Finance">Finance</option>
+            <option value="Operations">Operations</option>
+            <option value="IT">IT</option>
+            <option value="Customer Support">Customer Support</option>
+            <option value="Legal">Legal</option>
+            <option value="Research & Development">Research & Development</option>
+            <option value="Quality Assurance">Quality Assurance</option>
+            <option value="Product Management">Product Management</option>
+          </select>
+        </div>
+        
+        {/* Manager Selection - Conditional based on role */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <label style={labelStyle}>Manager</label>
+          {currentUserRole === "HR" ? (
+            <select 
+              name="managerId" 
+              value={form.managerId} 
+              onChange={handleChange} 
+              style={inputStyle}
+              disabled={managersLoading}
+            >
+              <option value="">
+                {managersLoading ? "Loading managers..." : "Select a Manager"}
+              </option>
+              {!managersLoading && managers.length > 0 ? (
+                managers.map(manager => (
+                  <option key={manager.userId || manager.id} value={manager.userId || manager.id}>
+                    {manager.username || manager.name || manager.fullName} ({manager.email})
+                  </option>
+                ))
+              ) : !managersLoading && managers.length === 0 ? (
+                <option disabled>No managers available</option>
+              ) : null}
+            </select>
+          ) : currentUserRole === "MANAGER" ? (
+            <div style={{
+              ...inputStyle,
+              backgroundColor: "#f0f0f0",
+              color: "#666",
+              display: "flex",
+              alignItems: "center"
+            }}>
+              {currentUser?.username || currentUser?.name || "Manager"} (You) - Auto-assigned
+            </div>
+          ) : currentUserRole === null ? (
+            <div style={{
+              ...inputStyle,
+              backgroundColor: "#f0f0f0",
+              color: "#666",
+              display: "flex",
+              alignItems: "center"
+            }}>
+              Loading user role...
+            </div>
+          ) : (
+            // Fallback for unknown roles - treat as HR
+            <select 
+              name="managerId" 
+              value={form.managerId} 
+              onChange={handleChange} 
+              style={inputStyle}
+              disabled={managersLoading}
+            >
+              <option value="">
+                {managersLoading ? "Loading managers..." : "Select a Manager"}
+              </option>
+              {!managersLoading && managers.length > 0 ? (
+                managers.map(manager => (
+                  <option key={manager.userId || manager.id} value={manager.userId || manager.id}>
+                    {manager.username || manager.name || manager.fullName} ({manager.email})
+                  </option>
+                ))
+              ) : !managersLoading && managers.length === 0 ? (
+                <option disabled>No managers available</option>
+              ) : null}
+            </select>
+          )}
+        </div>
+        
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, gridColumn: "1 / span 2" }}>
+          <label style={labelStyle}>Total Leaves Per Year</label>
+          <input 
+            name="totalLeaves" 
+            value={form.totalLeaves} 
+            onChange={handleChange} 
+            type="number"
+            min="0"
+            max="365"
+            placeholder="Enter total leaves per year"
+            style={inputStyle} 
+          />
+        </div>
       </div>
 
       {/* Past Experience Section */}
@@ -260,74 +461,7 @@ export default function AddEmployee() {
         background: `linear-gradient(120deg, ${palette.bg} 60%, #e0f2fe 100%)`,
       }}
     >
-      <nav
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          background: palette.white,
-          padding: "22px 40px 18px 40px",
-          boxShadow: "0 4px 18px 0 rgba(36,37,38,0.06)",
-          borderBottom: `1.5px solid ${palette.bg}`,
-        }}
-      >
-          <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
-            <span
-              style={{
-                fontSize: "2rem",
-                fontWeight: 800,
-                color: palette.accent,
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                letterSpacing: 0.5,
-              }}
-            >
-              <FaHome /> HR Dashboard
-            </span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
-            <span style={{ fontWeight: 700, color: palette.dark, fontSize: "1.1rem" }}>
-              {user?.username ? `Welcome, ${user.username}` : "Welcome, HR"}
-            </span>
-            <div
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: "50%",
-                background: `linear-gradient(135deg, ${palette.accent} 0%, #8b5cf6 100%)`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: `2.5px solid ${palette.accent}`,
-                color: palette.white,
-                fontSize: "1.2rem",
-              }}
-            >
-              <FaUser />
-            </div>
-            <span
-              style={{
-                fontWeight: 700,
-                color: palette.accent,
-                fontSize: "1.25rem",
-                background: "linear-gradient(90deg, #f1f5f9 60%, #e0e7ef 100%)",
-                borderRadius: 8,
-                padding: "6px 18px",
-                boxShadow: "0 2px 8px #6366f122",
-                fontFamily: "monospace",
-                minWidth: 110,
-                textAlign: "center",
-                border: `1.5px solid ${palette.accent}22`,
-              }}
-            >
-              {currentTime.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </span>
-          </div>
-        </nav>
+      <DynamicNavigation />
 
         <div style={{ display: "flex", flex: 1 }}>
           <Sidebar />

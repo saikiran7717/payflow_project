@@ -17,6 +17,16 @@ const ResetPassword = () => {
   const [newPasswordFocused, setNewPasswordFocused] = useState(false);
   const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
 
+  // Get user info from localStorage to determine if it's an employee
+  const getUserInfo = () => {
+    try {
+      const userStr = localStorage.getItem("payflow_user");
+      return userStr ? JSON.parse(userStr) : null;
+    } catch {
+      return null;
+    }
+  };
+
   const handleReset = async e => {
     e.preventDefault();
     setError(""); setMessage("");
@@ -27,7 +37,17 @@ const ResetPassword = () => {
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/users/reset-password", {
+      const user = getUserInfo();
+      // Determine the correct API endpoint based on user type
+      let apiUrl = "/api/users/reset-password"; // default for HR/Manager
+      
+      // Check if user is an employee (could be role === "EMPLOYEE" or if they came from employee login)
+      console.log("User Info:", user);
+      if (user && (user.role === "EMPLOYEE" || user.isEmployee || user.employeeId)) {
+        apiUrl = "/api/employees/employee/reset-password";
+      }
+
+      const res = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include", // important for session auth

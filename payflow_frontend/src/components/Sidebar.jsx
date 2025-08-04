@@ -141,6 +141,11 @@ const Sidebar = () => {
                     Add Employee
                   </Link>
                 </li>
+                <li>
+                  <Link to="/leave-requests" style={linkStyle("/leave-requests")}>
+                    Leave Requests
+                  </Link>
+                </li>
               </>
             )}
 

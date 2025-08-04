@@ -48,7 +48,7 @@ public class EmployeeService {
         if (empOpt.isEmpty()) return null;
 
         Employee emp = empOpt.get();
-        if (emp.getIsActive() && passwordEncoder.matches(rawPassword, emp.getPasswordHash())) {
+        if (passwordEncoder.matches(rawPassword, emp.getPasswordHash())) {
             return emp;
         }
         return null;
