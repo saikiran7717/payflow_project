@@ -96,13 +96,32 @@ export default function AddEmployee() {
   const [currentUser, setCurrentUser] = useState(null);
 
   const handleChange = e => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
+    
+    // Clear validation error for this field when user starts typing
+    if (validationErrors[name]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
   const handlePastExpChange = (index, field, value) => {
     const updated = [...form.pastExperiences];
     updated[index][field] = value;
     setForm({ ...form, pastExperiences: updated });
+    
+    // Clear past experience validation error when user starts typing
+    if (validationErrors.pastExperiences) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.pastExperiences;
+        return newErrors;
+      });
+    }
   };
 
   const addPastExperience = () => {
@@ -117,45 +136,232 @@ export default function AddEmployee() {
     setForm({ ...form, pastExperiences: updated });
   };
 
-  const validatePage1 = () => {
-    return form.fullName && form.email && form.age && form.phone && form.address && form.gender;
+  // Validation state for error messages
+  const [validationErrors, setValidationErrors] = useState({});
+
+  // Individual field validators
+  const validateFullName = (name) => {
+    if (!name.trim()) return "Full name is required";
+    if (!/^[A-Za-z\s]+$/.test(name.trim())) return "Full name must contain only letters and spaces";
+    if (name.trim().length < 2) return "Full name must be at least 2 characters long";
+    if (name.trim().length > 50) return "Full name must be less than 50 characters";
+    return "";
   };
-  const validatePage2 = () => {
-    // Require all education fields for page 2
-    return form.degree && form.university && form.graduationYear && form.grade;
+
+  const validateEmail = (email) => {
+    if (!email.trim()) return "Email is required";
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return "Please enter a valid email address";
+    if (email.length > 100) return "Email must be less than 100 characters";
+    return "";
   };
-  const validatePage3 = () => {
-    // Designation, department and totalLeaves are always required
-    if (!form.designation.trim() || !form.department.trim() || !form.totalLeaves.trim()) return false;
-    
-    // Manager validation based on role
-    if (currentUserRole === "HR") {
-      // HR must select a manager
-      if (!form.managerId.trim()) return false;
+
+  const validateAge = (age) => {
+    if (!age) return "Age is required";
+    const ageNum = Number(age);
+    if (isNaN(ageNum)) return "Age must be a number";
+    if (ageNum < 18) return "Age must be at least 18 years";
+    if (ageNum > 100) return "Age must be less than 100 years";
+    return "";
+  };
+
+  const validatePhone = (phone) => {
+    if (!phone.trim()) return "Phone number is required";
+    const phoneRegex = /^[+]?[\d\s\-()]{10,15}$/;
+    if (!phoneRegex.test(phone.trim())) return "Please enter a valid phone number (10-15 digits)";
+    return "";
+  };
+
+  const validateAddress = (address) => {
+    if (!address.trim()) return "Address is required";
+    if (address.trim().length < 10) return "Address must be at least 10 characters long";
+    if (address.trim().length > 200) return "Address must be less than 200 characters";
+    return "";
+  };
+
+  const validateGender = (gender) => {
+    if (!gender) return "Gender is required";
+    if (!["Male", "Female", "Others"].includes(gender)) return "Please select a valid gender";
+    return "";
+  };
+
+  const validateDegree = (degree) => {
+    if (!degree.trim()) return "Degree is required";
+    if (!/^[A-Za-z\s.&-]+$/.test(degree.trim())) return "Degree must contain only letters, spaces, dots, ampersands and hyphens";
+    if (degree.trim().length < 2) return "Degree must be at least 2 characters long";
+    if (degree.trim().length > 100) return "Degree must be less than 100 characters";
+    return "";
+  };
+
+  const validateUniversity = (university) => {
+    if (!university.trim()) return "University is required";
+    if (!/^[A-Za-z\s.&-]+$/.test(university.trim())) return "University name must contain only letters, spaces, dots, ampersands and hyphens";
+    if (university.trim().length < 2) return "University name must be at least 2 characters long";
+    if (university.trim().length > 100) return "University name must be less than 100 characters";
+    return "";
+  };
+
+  const validateGraduationYear = (year) => {
+    if (!year) return "Graduation year is required";
+    const yearNum = Number(year);
+    const currentYear = new Date().getFullYear();
+    if (isNaN(yearNum)) return "Graduation year must be a number";
+    if (yearNum < 1950) return "Graduation year must be after 1950";
+    if (yearNum > currentYear + 5) return `Graduation year cannot be more than ${currentYear + 5}`;
+    return "";
+  };
+
+  const validateGrade = (grade) => {
+    if (!grade.trim()) return "Grade is required";
+    // Allow grades like: A+, A, B+, B, C+, C, D, F, 85%, 3.5 GPA, First Class, etc.
+    if (!/^[A-Fa-f][+-]?$|^\d{1,3}(\.\d{1,2})?%?$|^[0-4](\.\d{1,2})?\s?(GPA|gpa)?$|^(First\s?Class|Second\s?Class|Third\s?Class|Pass|Distinction)$/i.test(grade.trim())) {
+      return "Please enter a valid grade (e.g., A+, 85%, 3.5 GPA, First Class)";
     }
-    // For MANAGER role, managerId is auto-set, so no validation needed
-    
-    // Past experience is optional - we can have no experiences OR only complete experiences
+    return "";
+  };
+
+  const validateDesignation = (designation) => {
+    if (!designation.trim()) return "Designation is required";
+    if (!/^[A-Za-z\s&.-]+$/.test(designation.trim())) return "Designation must contain only letters, spaces, ampersands, dots and hyphens";
+    if (designation.trim().length < 2) return "Designation must be at least 2 characters long";
+    if (designation.trim().length > 50) return "Designation must be less than 50 characters";
+    return "";
+  };
+
+  const validateDepartment = (department) => {
+    if (!department.trim()) return "Department is required";
+    return "";
+  };
+
+  const validateTotalLeaves = (leaves) => {
+    if (!leaves) return "Total leaves is required";
+    const leavesNum = Number(leaves);
+    if (isNaN(leavesNum)) return "Total leaves must be a number";
+    if (leavesNum < 0) return "Total leaves cannot be negative";
+    if (leavesNum > 365) return "Total leaves cannot exceed 365 days";
+    return "";
+  };
+
+  const validateManagerId = (managerId) => {
+    if (currentUserRole === "HR" && !managerId) return "Manager selection is required";
+    return "";
+  };
+
+  const validatePastExperience = (experiences) => {
     // Filter out completely empty experiences first
-    const nonEmptyExperiences = form.pastExperiences.filter(exp => 
+    const nonEmptyExperiences = experiences.filter(exp => 
       exp.companyName.trim() || exp.role.trim() || exp.years.toString().trim()
     );
     
     // If no non-empty experiences, validation passes
-    if (nonEmptyExperiences.length === 0) return true;
+    if (nonEmptyExperiences.length === 0) return "";
     
-    // If there are non-empty experiences, they must all be complete
-    return nonEmptyExperiences.every(exp => 
-      exp.companyName.trim() && exp.role.trim() && exp.years.toString().trim()
-    );
+    // Validate each non-empty experience
+    for (let i = 0; i < nonEmptyExperiences.length; i++) {
+      const exp = nonEmptyExperiences[i];
+      
+      if (!exp.companyName.trim()) return `Company name is required for experience ${i + 1}`;
+      if (!/^[A-Za-z\s&.-]+$/.test(exp.companyName.trim())) return `Company name must contain only letters, spaces, ampersands, dots and hyphens for experience ${i + 1}`;
+      
+      if (!exp.role.trim()) return `Role is required for experience ${i + 1}`;
+      if (!/^[A-Za-z\s&.-]+$/.test(exp.role.trim())) return `Role must contain only letters, spaces, ampersands, dots and hyphens for experience ${i + 1}`;
+      
+      if (!exp.years.toString().trim()) return `Years of experience is required for experience ${i + 1}`;
+      const years = Number(exp.years);
+      if (isNaN(years)) return `Years must be a number for experience ${i + 1}`;
+      if (years < 0) return `Years cannot be negative for experience ${i + 1}`;
+      if (years > 50) return `Years cannot exceed 50 for experience ${i + 1}`;
+    }
+    
+    return "";
+  };
+
+  const validatePage1 = () => {
+    const errors = {};
+    
+    const fullNameError = validateFullName(form.fullName);
+    if (fullNameError) errors.fullName = fullNameError;
+    
+    const emailError = validateEmail(form.email);
+    if (emailError) errors.email = emailError;
+    
+    const ageError = validateAge(form.age);
+    if (ageError) errors.age = ageError;
+    
+    const phoneError = validatePhone(form.phone);
+    if (phoneError) errors.phone = phoneError;
+    
+    const addressError = validateAddress(form.address);
+    if (addressError) errors.address = addressError;
+    
+    const genderError = validateGender(form.gender);
+    if (genderError) errors.gender = genderError;
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const validatePage2 = () => {
+    const errors = {};
+    
+    const degreeError = validateDegree(form.degree);
+    if (degreeError) errors.degree = degreeError;
+    
+    const universityError = validateUniversity(form.university);
+    if (universityError) errors.university = universityError;
+    
+    const graduationYearError = validateGraduationYear(form.graduationYear);
+    if (graduationYearError) errors.graduationYear = graduationYearError;
+    
+    const gradeError = validateGrade(form.grade);
+    if (gradeError) errors.grade = gradeError;
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const validatePage3 = () => {
+    const errors = {};
+    
+    const designationError = validateDesignation(form.designation);
+    if (designationError) errors.designation = designationError;
+    
+    const departmentError = validateDepartment(form.department);
+    if (departmentError) errors.department = departmentError;
+    
+    const totalLeavesError = validateTotalLeaves(form.totalLeaves);
+    if (totalLeavesError) errors.totalLeaves = totalLeavesError;
+    
+    const managerIdError = validateManagerId(form.managerId);
+    if (managerIdError) errors.managerId = managerIdError;
+    
+    const pastExperienceError = validatePastExperience(form.pastExperiences);
+    if (pastExperienceError) errors.pastExperiences = pastExperienceError;
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleNext = e => {
     e.preventDefault();
-    if (
-      (page === 1 && validatePage1()) ||
-      (page === 2 && validatePage2())
-    ) {
+    
+    let isValid = false;
+    if (page === 1) {
+      isValid = validatePage1();
+      if (!isValid) {
+        toast.error("Please fix the validation errors before proceeding to the next page");
+        return;
+      }
+    } else if (page === 2) {
+      isValid = validatePage2();
+      if (!isValid) {
+        toast.error("Please fix the validation errors before proceeding to the next page");
+        return;
+      }
+    }
+    
+    if (isValid) {
+      setValidationErrors({}); // Clear errors when moving to next page
       setPage(page + 1);
     }
   };
@@ -167,7 +373,12 @@ export default function AddEmployee() {
 
   const handleSubmit = async e => {
     e.preventDefault();
-    if (!validatePage3()) return;
+    
+    if (!validatePage3()) {
+      toast.error("Please fix the validation errors before submitting");
+      return;
+    }
+    
     setLoading(true);
     try {
       // Filter out completely empty experiences and only keep fully complete ones
@@ -247,6 +458,21 @@ export default function AddEmployee() {
     }
   };
 
+  // Helper component for displaying validation errors
+  const ErrorMessage = ({ error }) => {
+    if (!error) return null;
+    return (
+      <div style={{
+        color: "#ef4444",
+        fontSize: "0.875rem",
+        marginTop: "4px",
+        fontWeight: 500
+      }}>
+        {error}
+      </div>
+    );
+  };
+
   const pages = [
     // Page 1: Personal Details
     <div>
@@ -254,32 +480,88 @@ export default function AddEmployee() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 60, rowGap: 18 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <label style={labelStyle}>Full Name</label>
-          <input name="fullName" value={form.fullName} onChange={handleChange} style={inputStyle} />
+          <input 
+            name="fullName" 
+            value={form.fullName} 
+            onChange={handleChange} 
+            style={{
+              ...inputStyle,
+              borderColor: validationErrors.fullName ? "#ef4444" : "#cbd5e1"
+            }} 
+          />
+          <ErrorMessage error={validationErrors.fullName} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <label style={labelStyle}>Email</label>
-          <input name="email" value={form.email} onChange={handleChange} type="email" style={inputStyle} />
+          <input 
+            name="email" 
+            value={form.email} 
+            onChange={handleChange} 
+            type="email" 
+            style={{
+              ...inputStyle,
+              borderColor: validationErrors.email ? "#ef4444" : "#cbd5e1"
+            }} 
+          />
+          <ErrorMessage error={validationErrors.email} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <label style={labelStyle}>Age</label>
-          <input name="age" value={form.age} onChange={handleChange} type="number" style={inputStyle} />
+          <input 
+            name="age" 
+            value={form.age} 
+            onChange={handleChange} 
+            type="number" 
+            style={{
+              ...inputStyle,
+              borderColor: validationErrors.age ? "#ef4444" : "#cbd5e1"
+            }} 
+          />
+          <ErrorMessage error={validationErrors.age} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <label style={labelStyle}>Phone</label>
-          <input name="phone" value={form.phone} onChange={handleChange} style={inputStyle} />
+          <input 
+            name="phone" 
+            value={form.phone} 
+            onChange={handleChange} 
+            style={{
+              ...inputStyle,
+              borderColor: validationErrors.phone ? "#ef4444" : "#cbd5e1"
+            }} 
+          />
+          <ErrorMessage error={validationErrors.phone} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <label style={labelStyle}>Gender</label>
-          <select name="gender" value={form.gender} onChange={handleChange} style={inputStyle}>
+          <select 
+            name="gender" 
+            value={form.gender} 
+            onChange={handleChange} 
+            style={{
+              ...inputStyle,
+              borderColor: validationErrors.gender ? "#ef4444" : "#cbd5e1"
+            }}
+          >
             <option value="">Select Gender</option>
             <option value="Male">Male</option>
             <option value="Female">Female</option>
             <option value="Others">Others</option>
           </select>
+          <ErrorMessage error={validationErrors.gender} />
         </div>
         <div style={{ gridColumn: "1 / span 2", display: "flex", flexDirection: "column", gap: 10 }}>
           <label style={labelStyle}>Address</label>
-          <input name="address" value={form.address} onChange={handleChange} style={inputStyle} />
+          <input 
+            name="address" 
+            value={form.address} 
+            onChange={handleChange} 
+            style={{
+              ...inputStyle,
+              borderColor: validationErrors.address ? "#ef4444" : "#cbd5e1"
+            }} 
+          />
+          <ErrorMessage error={validationErrors.address} />
         </div>
       </div>
     </div>,
@@ -289,19 +571,57 @@ export default function AddEmployee() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 60, rowGap: 18 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <label style={labelStyle}>Degree</label>
-          <input name="degree" value={form.degree} onChange={handleChange} style={inputStyle} />
+          <input 
+            name="degree" 
+            value={form.degree} 
+            onChange={handleChange} 
+            style={{
+              ...inputStyle,
+              borderColor: validationErrors.degree ? "#ef4444" : "#cbd5e1"
+            }} 
+          />
+          <ErrorMessage error={validationErrors.degree} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <label style={labelStyle}>University</label>
-          <input name="university" value={form.university} onChange={handleChange} style={inputStyle} />
+          <input 
+            name="university" 
+            value={form.university} 
+            onChange={handleChange} 
+            style={{
+              ...inputStyle,
+              borderColor: validationErrors.university ? "#ef4444" : "#cbd5e1"
+            }} 
+          />
+          <ErrorMessage error={validationErrors.university} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <label style={labelStyle}>Graduation Year</label>
-          <input name="graduationYear" value={form.graduationYear} onChange={handleChange} style={inputStyle} />
+          <input 
+            name="graduationYear" 
+            value={form.graduationYear} 
+            onChange={handleChange} 
+            type="number"
+            style={{
+              ...inputStyle,
+              borderColor: validationErrors.graduationYear ? "#ef4444" : "#cbd5e1"
+            }} 
+          />
+          <ErrorMessage error={validationErrors.graduationYear} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <label style={labelStyle}>Grade</label>
-          <input name="grade" value={form.grade} onChange={handleChange} style={inputStyle} />
+          <input 
+            name="grade" 
+            value={form.grade} 
+            onChange={handleChange} 
+            placeholder="e.g., A+, 85%, 3.5 GPA, First Class"
+            style={{
+              ...inputStyle,
+              borderColor: validationErrors.grade ? "#ef4444" : "#cbd5e1"
+            }} 
+          />
+          <ErrorMessage error={validationErrors.grade} />
         </div>
       </div>
     </div>,
@@ -318,8 +638,12 @@ export default function AddEmployee() {
             value={form.designation} 
             onChange={handleChange} 
             placeholder="Enter job designation/title"
-            style={inputStyle} 
+            style={{
+              ...inputStyle,
+              borderColor: validationErrors.designation ? "#ef4444" : "#cbd5e1"
+            }} 
           />
+          <ErrorMessage error={validationErrors.designation} />
         </div>
         
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -328,7 +652,10 @@ export default function AddEmployee() {
             name="department" 
             value={form.department} 
             onChange={handleChange} 
-            style={inputStyle}
+            style={{
+              ...inputStyle,
+              borderColor: validationErrors.department ? "#ef4444" : "#cbd5e1"
+            }}
           >
             <option value="">Select Department</option>
             <option value="Human Resources">Human Resources</option>
@@ -344,32 +671,39 @@ export default function AddEmployee() {
             <option value="Quality Assurance">Quality Assurance</option>
             <option value="Product Management">Product Management</option>
           </select>
+          <ErrorMessage error={validationErrors.department} />
         </div>
         
         {/* Manager Selection - Conditional based on role */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <label style={labelStyle}>Manager</label>
           {currentUserRole === "HR" ? (
-            <select 
-              name="managerId" 
-              value={form.managerId} 
-              onChange={handleChange} 
-              style={inputStyle}
-              disabled={managersLoading}
-            >
-              <option value="">
-                {managersLoading ? "Loading managers..." : "Select a Manager"}
-              </option>
-              {!managersLoading && managers.length > 0 ? (
-                managers.map(manager => (
-                  <option key={manager.userId || manager.id} value={manager.userId || manager.id}>
-                    {manager.username || manager.name || manager.fullName} ({manager.email})
-                  </option>
-                ))
-              ) : !managersLoading && managers.length === 0 ? (
-                <option disabled>No managers available</option>
-              ) : null}
-            </select>
+            <>
+              <select 
+                name="managerId" 
+                value={form.managerId} 
+                onChange={handleChange} 
+                style={{
+                  ...inputStyle,
+                  borderColor: validationErrors.managerId ? "#ef4444" : "#cbd5e1"
+                }}
+                disabled={managersLoading}
+              >
+                <option value="">
+                  {managersLoading ? "Loading managers..." : "Select a Manager"}
+                </option>
+                {!managersLoading && managers.length > 0 ? (
+                  managers.map(manager => (
+                    <option key={manager.userId || manager.id} value={manager.userId || manager.id}>
+                      {manager.username || manager.name || manager.fullName} ({manager.email})
+                    </option>
+                  ))
+                ) : !managersLoading && managers.length === 0 ? (
+                  <option disabled>No managers available</option>
+                ) : null}
+              </select>
+              <ErrorMessage error={validationErrors.managerId} />
+            </>
           ) : currentUserRole === "MANAGER" ? (
             <div style={{
               ...inputStyle,
@@ -392,26 +726,32 @@ export default function AddEmployee() {
             </div>
           ) : (
             // Fallback for unknown roles - treat as HR
-            <select 
-              name="managerId" 
-              value={form.managerId} 
-              onChange={handleChange} 
-              style={inputStyle}
-              disabled={managersLoading}
-            >
-              <option value="">
-                {managersLoading ? "Loading managers..." : "Select a Manager"}
-              </option>
-              {!managersLoading && managers.length > 0 ? (
-                managers.map(manager => (
-                  <option key={manager.userId || manager.id} value={manager.userId || manager.id}>
-                    {manager.username || manager.name || manager.fullName} ({manager.email})
-                  </option>
-                ))
-              ) : !managersLoading && managers.length === 0 ? (
-                <option disabled>No managers available</option>
-              ) : null}
-            </select>
+            <>
+              <select 
+                name="managerId" 
+                value={form.managerId} 
+                onChange={handleChange} 
+                style={{
+                  ...inputStyle,
+                  borderColor: validationErrors.managerId ? "#ef4444" : "#cbd5e1"
+                }}
+                disabled={managersLoading}
+              >
+                <option value="">
+                  {managersLoading ? "Loading managers..." : "Select a Manager"}
+                </option>
+                {!managersLoading && managers.length > 0 ? (
+                  managers.map(manager => (
+                    <option key={manager.userId || manager.id} value={manager.userId || manager.id}>
+                      {manager.username || manager.name || manager.fullName} ({manager.email})
+                    </option>
+                  ))
+                ) : !managersLoading && managers.length === 0 ? (
+                  <option disabled>No managers available</option>
+                ) : null}
+              </select>
+              <ErrorMessage error={validationErrors.managerId} />
+            </>
           )}
         </div>
         
@@ -425,19 +765,44 @@ export default function AddEmployee() {
             min="0"
             max="365"
             placeholder="Enter total leaves per year"
-            style={inputStyle} 
+            style={{
+              ...inputStyle,
+              borderColor: validationErrors.totalLeaves ? "#ef4444" : "#cbd5e1"
+            }} 
           />
+          <ErrorMessage error={validationErrors.totalLeaves} />
         </div>
       </div>
 
       {/* Past Experience Section */}
       <div style={{ marginTop: 8 }}>
         <h4 style={{ fontWeight: 600, fontSize: "1.1rem", color: "#6366f1", marginBottom: 12 }}>Past Experience (Optional)</h4>
+        {validationErrors.pastExperiences && (
+          <ErrorMessage error={validationErrors.pastExperiences} />
+        )}
         {form.pastExperiences.map((exp, index) => (
           <div key={index} style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "center" }}>
-            <input placeholder="Company" value={exp.companyName} onChange={e => handlePastExpChange(index, "companyName", e.target.value)} style={{ ...inputStyle, flex: 2 }} />
-            <input placeholder="Role" value={exp.role} onChange={e => handlePastExpChange(index, "role", e.target.value)} style={{ ...inputStyle, flex: 2 }} />
-            <input placeholder="Years" type="number" min="0" max="50" value={exp.years} onChange={e => handlePastExpChange(index, "years", e.target.value)} style={{ ...inputStyle, flex: 1 }} />
+            <input 
+              placeholder="Company" 
+              value={exp.companyName} 
+              onChange={e => handlePastExpChange(index, "companyName", e.target.value)} 
+              style={{ ...inputStyle, flex: 2 }} 
+            />
+            <input 
+              placeholder="Role" 
+              value={exp.role} 
+              onChange={e => handlePastExpChange(index, "role", e.target.value)} 
+              style={{ ...inputStyle, flex: 2 }} 
+            />
+            <input 
+              placeholder="Years" 
+              type="number" 
+              min="0" 
+              max="50" 
+              value={exp.years} 
+              onChange={e => handlePastExpChange(index, "years", e.target.value)} 
+              style={{ ...inputStyle, flex: 1 }} 
+            />
             {form.pastExperiences.length > 1 && (
               <button onClick={() => removePastExperience(index)} type="button" style={{ ...buttonStyle, background: "#f87171", marginTop: 0, height: 38 }}>
                 Remove
@@ -477,18 +842,13 @@ export default function AddEmployee() {
                 <button
                   type="button"
                   onClick={handleNext}
-                  style={{
-                    ...buttonStyle,
-                    opacity: (page === 1 && !validatePage1()) || (page === 2 && !validatePage2()) ? 0.6 : 1,
-                    pointerEvents: (page === 1 && !validatePage1()) || (page === 2 && !validatePage2()) ? "none" : "auto"
-                  }}
-                  disabled={(page === 1 && !validatePage1()) || (page === 2 && !validatePage2())}
+                  style={buttonStyle}
                 >
                   Next
                 </button>
               )}
               {page === pages.length && (
-                <button type="submit" disabled={loading || !validatePage3()} style={buttonStyle}>
+                <button type="submit" disabled={loading} style={buttonStyle}>
                   {loading ? "Submitting..." : "Submit"}
                 </button>
               )}

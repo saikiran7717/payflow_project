@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useAuth } from "../authContext.jsx";
+import DynamicNavigation from "../components/DynamicNavigation.jsx";
 import { FaCalendarAlt, FaHome, FaUser, FaSignOutAlt, FaFileAlt, FaInfoCircle, FaLeaf, FaCheckCircle } from "react-icons/fa";
 import { Bar, Pie } from "react-chartjs-2";
 import {
@@ -29,79 +30,6 @@ const palette = {
   bg: "#f1f5f9",
   white: "#fff",
 };
-
-// Memoized Navigation Component to prevent re-renders
-const EmployeeNavigation = React.memo(({ employee, currentTime }) => (
-  <nav
-    style={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      background: palette.white,
-      padding: "22px 40px 18px 40px",
-      boxShadow: "0 4px 18px 0 rgba(36,37,38,0.06)",
-      borderBottom: `1.5px solid ${palette.bg}`,
-    }}
-  >
-    <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
-      <span
-        style={{
-          fontSize: "2rem",
-          fontWeight: 800,
-          color: palette.accent,
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          letterSpacing: 0.5,
-        }}
-      >
-        <FaHome /> Employee Dashboard
-      </span>
-    </div>
-    <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
-      <span style={{ fontWeight: 700, color: palette.dark, fontSize: "1.1rem" }}>
-        Welcome, {employee?.fullName || employee?.name || "Employee"}
-      </span>
-      <div
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: "50%",
-          background: `linear-gradient(135deg, ${palette.accent} 0%, #8b5cf6 100%)`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          border: `2.5px solid ${palette.accent}`,
-          color: palette.white,
-          fontSize: "1.2rem",
-        }}
-      >
-        <FaUser />
-      </div>
-      <span
-        style={{
-          fontWeight: 700,
-          color: palette.accent,
-          fontSize: "1.25rem",
-          background: "linear-gradient(90deg, #f1f5f9 60%, #e0e7ef 100%)",
-          borderRadius: 8,
-          padding: "6px 18px",
-          boxShadow: "0 2px 8px #6366f122",
-          fontFamily: "monospace",
-          minWidth: 110,
-          textAlign: "center",
-          border: `1.5px solid ${palette.accent}22`,
-        }}
-      >
-        {currentTime.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        })}
-      </span>
-    </div>
-  </nav>
-));
 
 // Employee Sidebar Component - Styled like HR Dashboard Sidebar
 const EmployeeSidebar = React.memo(({ activePage = "dashboard" }) => {
@@ -571,7 +499,7 @@ export default function EmployeeDashboard() {
         background: `linear-gradient(120deg, ${palette.bg} 60%, #e0f2fe 100%)`,
       }}
     >
-      <EmployeeNavigation employee={employee} currentTime={currentTime} />
+      <DynamicNavigation />
 
       <div style={{ display: "flex", flex: 1 }}>
         <EmployeeSidebar activePage="dashboard" />

@@ -2,6 +2,7 @@ import React from "react";
 import { useAuth } from "../authContext.jsx";
 import HRNavigation from "./HRNavigation";
 import ManagerNavigation from "./ManagerNavigation";
+import EmployeeNavigation from "./EmployeeNavigation";
 
 const DynamicNavigation = () => {
   const { user } = useAuth();
@@ -21,14 +22,18 @@ const DynamicNavigation = () => {
   // Determine which navigation component to render based on user role
   const userRole = currentUser?.role?.toLowerCase();
   
+  console.log("DynamicNavigation - User object:", currentUser);
+  console.log("DynamicNavigation - User role:", currentUser?.role, "Normalized:", userRole);
+  
   if (userRole === "hr") {
     return <HRNavigation />;
   } else if (userRole === "manager") {
     return <ManagerNavigation />;
+  } else if (userRole === "employee" || currentUser?.isEmployee) {
+    // For employees, use the dedicated EmployeeNavigation
+    return <EmployeeNavigation />;
   } else {
-    // For debugging - log the user role to help troubleshoot
-    console.log("DynamicNavigation - User role:", currentUser?.role, "Normalized:", userRole);
-    // Default fallback - could be HRNavigation or a generic navigation
+    // Default fallback - use HRNavigation
     return <HRNavigation />;
   }
 };

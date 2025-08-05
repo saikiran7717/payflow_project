@@ -32,16 +32,59 @@ const HRNavigation = React.memo(() => {
   // Fetch user details when user object is available
   useEffect(() => {
     const fetchUserDetails = async () => {
-      if (user && user.userId && !userDetails) {
+      // Get user from localStorage if context user is not available
+      let currentUser = user;
+      if (!currentUser) {
         try {
-          const response = await fetch(`/api/employees/${user.userId}`, {
-            method: "GET",
-            credentials: "include",
-          });
+          const storedUser = localStorage.getItem("payflow_user");
+          currentUser = storedUser ? JSON.parse(storedUser) : null;
+        } catch (error) {
+          console.error("Error parsing stored user:", error);
+        }
+      }
+
+      if (currentUser && !userDetails) {
+        try {
+          let response;
+          const userRole = currentUser.role?.toLowerCase();
+
+          console.log("Fetching user details for role:", userRole);
+
+          // Use different API endpoints based on user role
+          if (userRole === "hr") {
+            // For HR users, fetch from users/me API (this endpoint exists)
+            console.log("Fetching HR user details from /api/users/me");
+            response = await fetch(`/api/users/me`, {
+              method: "GET",
+              credentials: "include",
+            });
+          } else if (userRole === "admin") {
+            // For admin users, fetch from admin API
+            console.log("Fetching admin user details from /api/admins/me");
+            response = await fetch(`/api/admins/me`, {
+              method: "GET",
+              credentials: "include",
+            });
+          } else {
+            // For employees or others, fetch from employees API
+            const userId = currentUser.userId || currentUser.id;
+            console.log("Fetching employee user details from /api/employees/", userId);
+            response = await fetch(`/api/employees/${userId}`, {
+              method: "GET",
+              credentials: "include",
+            });
+          }
           
-          if (response.ok) {
+          if (response && response.ok) {
             const details = await response.json();
+            console.log("Successfully fetched user details:", details);
             setUserDetails(details);
+          } else {
+            console.log("Failed to fetch user details. Response status:", response?.status);
+            if (response) {
+              const errorText = await response.text();
+              console.log("Error response:", errorText);
+            }
           }
         } catch (error) {
           console.error("Error fetching user details:", error);
@@ -54,34 +97,96 @@ const HRNavigation = React.memo(() => {
 
   // Helper function to get user display name
   const getUserDisplayName = () => {
-    if (!user) return "HR";
+    // Get user from localStorage if context user is not available
+    let currentUser = user;
+    if (!currentUser) {
+      try {
+        const storedUser = localStorage.getItem("payflow_user");
+        currentUser = storedUser ? JSON.parse(storedUser) : null;
+      } catch (error) {
+        console.error("Error parsing stored user:", error);
+      }
+    }
+
+    if (!currentUser) return "HR";
+
+    // Debug: Log the current user object to see what fields are available
+    console.log("getUserDisplayName - currentUser object:", currentUser);
+    console.log("getUserDisplayName - userDetails object:", userDetails);
     
-    // If we have fetched user details, use them
+    // Priority 1: Try original user object properties first (from login response)
+    if (currentUser.username) {
+      console.log("Using username from currentUser:", currentUser.username);
+      return currentUser.username;
+    }
+    if (currentUser.name) {
+      console.log("Using name from currentUser:", currentUser.name);
+      return currentUser.name;
+    }
+    if (currentUser.fullName) {
+      console.log("Using fullName from currentUser:", currentUser.fullName);
+      return currentUser.fullName;
+    }
+    if (currentUser.firstName && currentUser.lastName) {
+      const fullName = `${currentUser.firstName} ${currentUser.lastName}`;
+      console.log("Using firstName + lastName from currentUser:", fullName);
+      return fullName;
+    }
+    if (currentUser.firstName) {
+      console.log("Using firstName from currentUser:", currentUser.firstName);
+      return currentUser.firstName;
+    }
+    
+    // Priority 2: If we have fetched user details from API, use them
     if (userDetails) {
-      if (userDetails.username) return userDetails.username;
-      if (userDetails.name) return userDetails.name;
-      if (userDetails.fullName) return userDetails.fullName;
-      if (userDetails.firstName && userDetails.lastName) return `${userDetails.firstName} ${userDetails.lastName}`;
-      if (userDetails.firstName) return userDetails.firstName;
-      if (userDetails.email) {
-        const emailUsername = userDetails.email.split('@')[0];
-        return emailUsername;
+      if (userDetails.username) {
+        console.log("Using username from userDetails:", userDetails.username);
+        return userDetails.username;
+      }
+      if (userDetails.name) {
+        console.log("Using name from userDetails:", userDetails.name);
+        return userDetails.name;
+      }
+      if (userDetails.fullName) {
+        console.log("Using fullName from userDetails:", userDetails.fullName);
+        return userDetails.fullName;
+      }
+      if (userDetails.firstName && userDetails.lastName) {
+        const fullName = `${userDetails.firstName} ${userDetails.lastName}`;
+        console.log("Using firstName + lastName from userDetails:", fullName);
+        return fullName;
+      }
+      if (userDetails.firstName) {
+        console.log("Using firstName from userDetails:", userDetails.firstName);
+        return userDetails.firstName;
       }
     }
     
-    // Try original user object properties
-    if (user.username) return user.username;
-    if (user.name) return user.name;
-    if (user.fullName) return user.fullName;
-    if (user.firstName && user.lastName) return `${user.firstName} ${user.lastName}`;
-    if (user.firstName) return user.firstName;
-    if (user.email) {
-      const emailUsername = user.email.split('@')[0];
-      return emailUsername;
+    // Priority 3: Extract from email if available
+    if (currentUser.email) {
+      const emailUsername = currentUser.email.split('@')[0];
+      const formattedName = emailUsername.charAt(0).toUpperCase() + emailUsername.slice(1);
+      console.log("Using email-based name from currentUser:", formattedName);
+      return formattedName;
     }
     
-    // Fallback to role or HR
-    return user.role || "HR";
+    if (userDetails && userDetails.email) {
+      const emailUsername = userDetails.email.split('@')[0];
+      const formattedName = emailUsername.charAt(0).toUpperCase() + emailUsername.slice(1);
+      console.log("Using email-based name from userDetails:", formattedName);
+      return formattedName;
+    }
+    
+    // Priority 4: Use userId if available as a temporary fallback
+    if (currentUser.userId) {
+      const fallbackName = `HR User ${currentUser.userId}`;
+      console.log("Using userId-based name:", fallbackName);
+      return fallbackName;
+    }
+    
+    // Final fallback
+    console.log("Using fallback: HR");
+    return "HR";
   };
 
   // Debug logging (remove in production)

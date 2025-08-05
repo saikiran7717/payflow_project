@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import DynamicNavigation from "../components/DynamicNavigation.jsx";
 import { FaCalendarAlt, FaHome, FaUser, FaSignOutAlt, FaFileAlt, FaInfoCircle, FaPaperPlane } from "react-icons/fa";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -264,6 +265,61 @@ export default function ApplyLeave() {
     
     try {
       const employeeId = employee.employeeId || employee.id;
+      
+      // Check for existing leave applications on the same date range
+      console.log("Checking for existing leave applications...");
+      const existingLeavesResponse = await fetch(`/api/leaves/${employeeId}`, {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (existingLeavesResponse.ok) {
+        const existingLeaves = await existingLeavesResponse.json();
+        console.log("Existing leaves:", existingLeaves);
+        
+        // Check if there's any overlap with existing leave applications
+        const newStartDate = new Date(startDate);
+        const newEndDate = new Date(endDate);
+        
+        const hasOverlap = existingLeaves.some(leave => {
+          // Skip rejected leaves
+          if (leave.status?.toLowerCase() === 'rejected') {
+            return false;
+          }
+          
+          const existingStartDate = new Date(leave.startDate);
+          const existingEndDate = new Date(leave.endDate);
+          
+          // Check for any date overlap
+          const isOverlapping = (
+            (newStartDate >= existingStartDate && newStartDate <= existingEndDate) ||
+            (newEndDate >= existingStartDate && newEndDate <= existingEndDate) ||
+            (newStartDate <= existingStartDate && newEndDate >= existingEndDate)
+          );
+          
+          if (isOverlapping) {
+            console.log(`Overlap found with existing leave: ${leave.startDate} to ${leave.endDate} (Status: ${leave.status})`);
+          }
+          
+          return isOverlapping;
+        });
+
+        if (hasOverlap) {
+          toast.error("You already have a leave application for the selected date range. Please choose different dates.", { 
+            position: "top-center",
+            autoClose: 5000
+          });
+          setLoading(false);
+          return;
+        }
+      } else {
+        console.warn("Could not fetch existing leaves for validation, proceeding with application");
+      }
+      
+      // Proceed with leave application if no overlap found
       const response = await fetch(`/api/leaves/apply/${employeeId}`, {
         method: "POST",
         headers: {
@@ -323,78 +379,7 @@ export default function ApplyLeave() {
         background: `linear-gradient(120deg, ${palette.bg} 60%, #e0f2fe 100%)`,
       }}
     >
-      <nav
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          background: palette.white,
-          padding: "22px 40px 18px 40px",
-          boxShadow: "0 4px 18px 0 rgba(36,37,38,0.06)",
-          borderBottom: `1.5px solid ${palette.bg}`,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
-          <span
-            style={{
-              fontSize: "2rem",
-              fontWeight: 800,
-              color: palette.accent,
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              letterSpacing: 0.5,
-            }}
-          >
-            <FaFileAlt /> Apply Leave
-          </span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
-          <span style={{ fontWeight: 700, color: palette.darkest, fontSize: "1.1rem", letterSpacing: 0.2 }}>
-            {employee?.fullName || employee?.name || employee?.firstName || "Welcome, Employee"}
-          </span>
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: "50%",
-              background: `linear-gradient(135deg, ${palette.accent} 0%, #8b5cf6 100%)`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              border: `2.5px solid ${palette.accent}`,
-              color: palette.white,
-              fontSize: "1.2rem",
-            }}
-          >
-            <FaUser />
-          </div>
-          <span
-            style={{
-              fontWeight: 700,
-              color: palette.accent,
-              fontSize: "1.25rem",
-              letterSpacing: 1.5,
-              background: "linear-gradient(90deg, #f1f5f9 60%, #e0e7ef 100%)",
-              borderRadius: 8,
-              padding: "6px 18px",
-              boxShadow: "0 2px 8px #6366f122",
-              fontFamily: "monospace, 'Roboto Mono', 'Fira Mono', 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace",
-              minWidth: 110,
-              textAlign: "center",
-              border: `1.5px solid ${palette.accent}22`,
-              marginLeft: 8,
-              transition: "background 0.2s",
-            }}
-          >
-            {currentTime.toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-            })}
-          </span>
-        </div>
-      </nav>
+      <DynamicNavigation />
 
       <div style={{ display: "flex", flex: 1 }}>
         <EmployeeSidebar activePage="apply-leave" />

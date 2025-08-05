@@ -42,21 +42,26 @@ export default function Login() {
       if (!res.ok) {
         let errorMsg = "Incorrect email or password. Please try again.";
         
-        if (res.status === 403) {
-          // Handle account disabled case
-          try {
-            const errorData = await res.json();
-            errorMsg = errorData.error || "Your account is disabled. Please contact HR/Manager.";
-          } catch (parseError) {
-            errorMsg = "Your account is disabled. Please contact HR/Manager.";
-          }
-          toast.error(errorMsg, { position: "top-center" });
-          setError(errorMsg);
-        } else if (res.status === 401) {
-          // Handle invalid credentials
+        if (res.status === 401) {
+          // Handle invalid credentials - check this first
           try {
             const errorData = await res.json();
             errorMsg = errorData.error || "Invalid email or password.";
+          } catch (parseError) {
+            errorMsg = "Invalid email or password.";
+          }
+          toast.error(errorMsg, { position: "top-center" });
+          setError(errorMsg);
+        } else if (res.status === 403) {
+          // Handle account disabled case - check message to distinguish from auth failure
+          try {
+            const errorData = await res.json();
+            // Only show disabled message if it specifically mentions disabled/blocked
+            if (errorData.error && (errorData.error.toLowerCase().includes('disabled') || errorData.error.toLowerCase().includes('blocked'))) {
+              errorMsg = errorData.error || "Your account is disabled. Please contact HR/Manager.";
+            } else {
+              errorMsg = "Invalid email or password.";
+            }
           } catch (parseError) {
             errorMsg = "Invalid email or password.";
           }
