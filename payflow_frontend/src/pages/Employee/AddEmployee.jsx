@@ -315,23 +315,25 @@ export default function AddEmployee() {
     return "";
   };
 
-  // CTC Validation Functions (HR only)
+  // CTC Validation Functions (HR only) - Simplified to only check for numbers
   const validateEffectiveFrom = (date) => {
-    if (!date) return "Effective from date is required";
-    const selectedDate = new Date(date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (selectedDate < today) return "Effective date cannot be in the past";
+    if (date && date.trim()) {
+      const selectedDate = new Date(date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time to compare only dates
+      
+      if (selectedDate < today) {
+        return "Effective date cannot be in the past";
+      }
+    }
     return "";
   };
 
   const validateBasicSalary = (salary) => {
-    if (!salary) return "Basic salary is required";
-    const salaryNum = Number(salary);
-    if (isNaN(salaryNum)) return "Basic salary must be a number";
-    if (salaryNum < 0) return "Basic salary cannot be negative";
-    if (salaryNum < 10000) return "Basic salary must be at least ₹10,000";
-    if (salaryNum > 10000000) return "Basic salary cannot exceed ₹1,00,00,000";
+    if (salary && salary.trim()) {
+      const salaryNum = Number(salary);
+      if (isNaN(salaryNum)) return "Basic salary must be a number";
+    }
     return "";
   };
 
@@ -339,19 +341,15 @@ export default function AddEmployee() {
     if (amount && amount.trim()) {
       const amountNum = Number(amount);
       if (isNaN(amountNum)) return `${fieldName} must be a number`;
-      if (amountNum < 0) return `${fieldName} cannot be negative`;
-      if (amountNum > 5000000) return `${fieldName} cannot exceed ₹50,00,000`;
     }
     return "";
   };
 
   const validateTotalCtc = (totalCtc) => {
-    if (!totalCtc) return "Total CTC is required";
-    const ctcNum = Number(totalCtc);
-    if (isNaN(ctcNum)) return "Total CTC must be a number";
-    if (ctcNum < 0) return "Total CTC cannot be negative";
-    if (ctcNum < 100000) return "Total CTC must be at least ₹1,00,000";
-    if (ctcNum > 20000000) return "Total CTC cannot exceed ₹2,00,00,000";
+    if (totalCtc && totalCtc.trim()) {
+      const ctcNum = Number(totalCtc);
+      if (isNaN(ctcNum)) return "Total CTC must be a number";
+    }
     return "";
   };
 
@@ -359,6 +357,7 @@ export default function AddEmployee() {
     const errors = {};
     const ctc = form.ctcDetails;
     
+    // Only validate if fields have values and check if they are numbers
     const effectiveFromError = validateEffectiveFrom(ctc.effectiveFrom);
     if (effectiveFromError) errors.effectiveFrom = effectiveFromError;
     
