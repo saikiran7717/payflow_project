@@ -128,7 +128,7 @@ const Sidebar = () => {
               </>
             )}
 
-            {/* HR (non-admin) links */}
+            {/* HR and Manager common links */}
             {localUser && localUser.role !== "admin" && (
               <>
                 <li>
@@ -144,6 +144,17 @@ const Sidebar = () => {
                 <li>
                   <Link to="/leave-requests" style={linkStyle("/leave-requests")}>
                     Leave Requests
+                  </Link>
+                </li>
+              </>
+            )}
+
+            {/* HR-only links */}
+            {localUser && localUser.role === "HR" && (
+              <>
+                <li>
+                  <Link to="/ctc-info" style={linkStyle("/ctc-info")}>
+                    CTC Info
                   </Link>
                 </li>
               </>

@@ -100,6 +100,11 @@ const EmployeeSidebar = ({ activePage = "leaves-info" }) => {
               </a>
             </li>
             <li>
+              <a href="/ctc-details" style={linkStyle("ctc-details")}>
+                CTC Details
+              </a>
+            </li>
+            <li>
               <button
                 onClick={handleLogout}
                 style={{

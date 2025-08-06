@@ -10,6 +10,8 @@ import ManagerDashboard from "./pages/Managerdashboard";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import ApplyLeave from "./pages/ApplyLeave";
 import LeavesInfo from "./pages/LeavesInfo";
+import CTCDetails from "./pages/CTCDetails";
+import CTCInfo from "./pages/CTCInfo";
 import EmployeeListPage from "./pages/EmployeeListPage";
 import EmployeeList from "./pages/Employee/EmployeeList";
 import AddEmployee from "./pages/Employee/AddEmployee";
@@ -30,6 +32,7 @@ function AppRoutes() {
       <Route path="/employee-dashboard" element={<EmployeeDashboard />} />
       <Route path="/apply-leave" element={<ApplyLeave />} />
       <Route path="/leaves-info" element={<LeavesInfo />} />
+      <Route path="/ctc-details" element={<CTCDetails />} />
 
       {/* Dashboard routes only accessible if logged in */}
       {user && user.role === "admin" && (
@@ -45,12 +48,14 @@ function AppRoutes() {
         <>
           <Route path="/hr" element={<HRDashboard />} />
           <Route path="/employees" element={<HRDashboard />} />
+          <Route path="/ctc-info" element={<CTCInfo />} />
           <Route path="/leave-requests" element={<LeaveRequests />} />
         </>
       )}
       {user && (user.role === "MANAGER" || user.role === "manager") && (
         <>
           <Route path="/manager" element={<ManagerDashboard />} />
+          <Route path="/ctc-info" element={<CTCInfo />} />
           <Route path="/leave-requests" element={<LeaveRequests />} />
         </>
       )}

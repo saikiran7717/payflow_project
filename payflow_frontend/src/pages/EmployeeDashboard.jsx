@@ -122,6 +122,11 @@ const EmployeeSidebar = React.memo(({ activePage = "dashboard" }) => {
               </a>
             </li>
             <li>
+              <a href="/ctc-details" style={linkStyle("ctc-details")}>
+                CTC Details
+              </a>
+            </li>
+            <li>
               <button
                 onClick={handleLogout}
                 style={{
@@ -316,6 +321,7 @@ export default function EmployeeDashboard() {
             usedLeaves: usedLeaves,
             remLeaves: remainingLeaves,
             pendingLeaves: pendingLeaves,
+            extraLeavesThisMonth: employeeInfo.extraLeavesThisMonth || 0, // Include extra leaves data from backend
           };
 
           console.log("Final enhanced employee data:", enhancedEmployee);
@@ -340,6 +346,7 @@ export default function EmployeeDashboard() {
             usedLeaves: 7,
             remLeaves: 18,
             pendingLeaves: 2,
+            extraLeavesThisMonth: 0,
           };
           setEmployee(fallbackEmployee);
         }
@@ -379,12 +386,18 @@ export default function EmployeeDashboard() {
       color: palette.orange,
     },
     {
+      icon: <FaInfoCircle />,
+      label: "Extra Leaves This Month",
+      value: employee?.extraLeavesThisMonth ?? "0",
+      color: palette.red,
+    },
+    {
       icon: <FaCalendarAlt />,
       label: "Today's Date",
       value: formattedDate,
       color: palette.gray,
     },
-  ], [employee?.totalLeaves, employee?.remLeaves, employee?.usedLeaves, formattedDate]);
+  ], [employee?.totalLeaves, employee?.remLeaves, employee?.usedLeaves, employee?.extraLeavesThisMonth, formattedDate]);
 
   // Chart data using real employee leave information from backend
   const leaveStatusData = useMemo(() => ({
@@ -521,7 +534,7 @@ export default function EmployeeDashboard() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
+              gridTemplateColumns: "repeat(5, 1fr)",
               gap: 28,
               marginBottom: 18,
             }}

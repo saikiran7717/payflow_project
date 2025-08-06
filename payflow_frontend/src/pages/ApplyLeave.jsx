@@ -100,6 +100,11 @@ const EmployeeSidebar = ({ activePage = "apply-leave" }) => {
               </a>
             </li>
             <li>
+              <a href="/ctc-details" style={linkStyle("ctc-details")}>
+                CTC Details
+              </a>
+            </li>
+            <li>
               <button
                 onClick={handleLogout}
                 style={{
@@ -247,6 +252,64 @@ export default function ApplyLeave() {
       toast.error("End date must be after start date", { position: "top-center" });
       return false;
     }
+
+    // Calculate requested leave days
+    const requestedDays = calculateLeaveDays();
+    
+    // Get current month and year for validation
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    
+    const startMonth = start.getMonth();
+    const startYear = start.getFullYear();
+    const endMonth = end.getMonth();
+    const endYear = end.getFullYear();
+    
+    // Check if employee has sufficient remaining leaves
+    if (employee?.remLeaves !== undefined && requestedDays > employee.remLeaves) {
+      // Check if the extra days can be taken (only in current month)
+      const isStartInCurrentMonth = startMonth === currentMonth && startYear === currentYear;
+      const isEndInCurrentMonth = endMonth === currentMonth && endYear === currentYear;
+      
+      if (!isStartInCurrentMonth || !isEndInCurrentMonth) {
+        toast.error(
+          `Insufficient remaining leaves. You have ${employee.remLeaves} days remaining but requesting ${requestedDays} days. Extra leaves can only be taken within the current month.`, 
+          { 
+            position: "top-center",
+            autoClose: 8000 // Show longer for important information
+          }
+        );
+        return false;
+      } else {
+        // Show warning but allow submission for current month
+        const extraDays = requestedDays - employee.remLeaves;
+        toast.warning(
+          `You are requesting ${extraDays} extra days beyond your remaining leaves. This will be tracked as extra leaves for this month.`, 
+          { 
+            position: "top-center",
+            autoClose: 6000
+          }
+        );
+      }
+    }
+    
+    // Check if employee has no remaining leaves
+    if (employee?.remLeaves === 0) {
+      const isStartInCurrentMonth = startMonth === currentMonth && startYear === currentYear;
+      const isEndInCurrentMonth = endMonth === currentMonth && endYear === currentYear;
+      
+      if (!isStartInCurrentMonth || !isEndInCurrentMonth) {
+        toast.error(
+          `You have no remaining leaves. Extra leaves can only be taken within the current month.`, 
+          { 
+            position: "top-center",
+            autoClose: 6000
+          }
+        );
+        return false;
+      }
+    }
     
     return true;
   };
@@ -347,9 +410,36 @@ export default function ApplyLeave() {
           window.location.href = "/login";
         }, 2000);
       } else {
-        const errorText = await response.text();
-        console.error("Leave application failed:", errorText);
-        toast.error(errorText || "Failed to apply for leave", { position: "top-center" });
+        // Handle error response properly
+        let errorMessage = "Failed to apply for leave";
+        
+        try {
+          // Try to parse as JSON first (for our custom error responses)
+          const errorData = await response.json();
+          
+          if (errorData.type === "INSUFFICIENT_LEAVES") {
+            errorMessage = `Cannot apply for leave: You have only ${errorData.remainingLeaves} remaining leaves but requested ${errorData.requestedLeaves} days.`;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          }
+        } catch (e) {
+          // If JSON parsing fails, try to get as text
+          try {
+            const errorText = await response.text();
+            if (errorText) {
+              errorMessage = errorText;
+            }
+          } catch (textError) {
+            // Use default error message if both JSON and text parsing fail
+            console.error("Error parsing error response:", textError);
+          }
+        }
+        
+        console.error("Leave application failed:", errorMessage);
+        toast.error(errorMessage, { 
+          position: "top-center",
+          autoClose: 6000 // Show error longer for important messages
+        });
       }
     } catch (error) {
       console.error("Error applying for leave:", error);
@@ -550,10 +640,141 @@ export default function ApplyLeave() {
                   <div style={{ color: palette.darkest, fontWeight: 600 }}>
                     Duration: {calculateLeaveDays()} day(s) ({startDate} to {endDate})
                   </div>
-                  {employee?.remLeaves && (
-                    <div style={{ color: palette.dark, fontSize: "0.9rem", marginTop: 4 }}>
-                      Remaining leaves: {employee.remLeaves}
-                    </div>
+                  {employee?.remLeaves !== undefined && (
+                    <>
+                      <div style={{ color: palette.dark, fontSize: "0.9rem", marginTop: 4 }}>
+                        Remaining leaves: {employee.remLeaves}
+                      </div>
+                      {calculateLeaveDays() > employee.remLeaves && (
+                        <>
+                          {/* Check if dates are in current month */}
+                          {(() => {
+                            const currentDate = new Date();
+                            const currentMonth = currentDate.getMonth();
+                            const currentYear = currentDate.getFullYear();
+                            
+                            const start = new Date(startDate);
+                            const end = new Date(endDate);
+                            const startMonth = start.getMonth();
+                            const startYear = start.getFullYear();
+                            const endMonth = end.getMonth();
+                            const endYear = end.getFullYear();
+                            
+                            const isCurrentMonth = (startMonth === currentMonth && startYear === currentYear) && 
+                                                   (endMonth === currentMonth && endYear === currentYear);
+                            
+                            const extraDays = calculateLeaveDays() - employee.remLeaves;
+                            
+                            if (isCurrentMonth) {
+                              return (
+                                <div 
+                                  style={{ 
+                                    color: palette.orange, 
+                                    fontSize: "0.9rem", 
+                                    marginTop: 8,
+                                    fontWeight: 600,
+                                    padding: "8px 12px",
+                                    background: `${palette.orange}11`,
+                                    borderRadius: 8,
+                                    border: `1px solid ${palette.orange}33`,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 6
+                                  }}
+                                >
+                                  <FaInfoCircle />
+                                  ℹ️ Note: {extraDays} extra days will be tracked for this month (allowed since leave is within current month).
+                                </div>
+                              );
+                            } else {
+                              return (
+                                <div 
+                                  style={{ 
+                                    color: palette.red, 
+                                    fontSize: "0.9rem", 
+                                    marginTop: 8,
+                                    fontWeight: 600,
+                                    padding: "8px 12px",
+                                    background: `${palette.red}11`,
+                                    borderRadius: 8,
+                                    border: `1px solid ${palette.red}33`,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 6
+                                  }}
+                                >
+                                  <FaInfoCircle />
+                                  ⚠️ Error: Extra leaves ({extraDays} days) can only be taken within the current month.
+                                </div>
+                              );
+                            }
+                          })()}
+                        </>
+                      )}
+                      {employee.remLeaves === 0 && (
+                        <>
+                          {(() => {
+                            const currentDate = new Date();
+                            const currentMonth = currentDate.getMonth();
+                            const currentYear = currentDate.getFullYear();
+                            
+                            const start = new Date(startDate);
+                            const end = new Date(endDate);
+                            const startMonth = start.getMonth();
+                            const startYear = start.getFullYear();
+                            const endMonth = end.getMonth();
+                            const endYear = end.getFullYear();
+                            
+                            const isCurrentMonth = (startMonth === currentMonth && startYear === currentYear) && 
+                                                   (endMonth === currentMonth && endYear === currentYear);
+                            
+                            if (isCurrentMonth) {
+                              return (
+                                <div 
+                                  style={{ 
+                                    color: palette.orange, 
+                                    fontSize: "0.9rem", 
+                                    marginTop: 8,
+                                    fontWeight: 600,
+                                    padding: "8px 12px",
+                                    background: `${palette.orange}11`,
+                                    borderRadius: 8,
+                                    border: `1px solid ${palette.orange}33`,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 6
+                                  }}
+                                >
+                                  <FaInfoCircle />
+                                  ℹ️ Note: All {calculateLeaveDays()} days will be tracked as extra leaves for this month.
+                                </div>
+                              );
+                            } else {
+                              return (
+                                <div 
+                                  style={{ 
+                                    color: palette.red, 
+                                    fontSize: "0.9rem", 
+                                    marginTop: 8,
+                                    fontWeight: 600,
+                                    padding: "8px 12px",
+                                    background: `${palette.red}11`,
+                                    borderRadius: 8,
+                                    border: `1px solid ${palette.red}33`,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 6
+                                  }}
+                                >
+                                  <FaInfoCircle />
+                                  ⚠️ Error: You have no remaining leaves. Extra leaves can only be taken within the current month.
+                                </div>
+                              );
+                            }
+                          })()}
+                        </>
+                      )}
+                    </>
                   )}
                 </div>
               )}

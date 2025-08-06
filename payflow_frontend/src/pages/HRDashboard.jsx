@@ -67,17 +67,28 @@ export default function HRDashboard() {
 
   const fetchEmployees = useCallback(() => {
     setLoading(true);
-    fetch("/api/employees/getAll")
+    setError(null);
+    fetch("/api/employees/getAll", {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
       .then((res) => {
-        if (!res.ok) throw new Error("Failed to load employees");
+        if (!res.ok) {
+          throw new Error(`Failed to load employees: ${res.status} ${res.statusText}`);
+        }
         return res.json();
       })
       .then((data) => {
+        console.log("Employees loaded successfully:", data);
         setEmployees(Array.isArray(data) ? data : []);
         setLoading(false);
       })
-      .catch(() => {
-        setError("Could not load employees.");
+      .catch((error) => {
+        console.error("Error fetching employees:", error);
+        setError("Could not load employees. " + error.message);
         setLoading(false);
       });
   }, []);
@@ -91,6 +102,7 @@ export default function HRDashboard() {
   const fetchPendingLeaveRequests = useCallback(async () => {
     setPendingLeavesLoading(true);
     try {
+      console.log("Fetching pending leave requests...");
       const response = await fetch("/api/leaves/all", {
         method: "GET",
         credentials: "include",
@@ -99,92 +111,30 @@ export default function HRDashboard() {
         },
       });
 
+      console.log("Leave requests response status:", response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log("Leave requests data received:", data);
         const pendingLeaves = Array.isArray(data) 
           ? data.filter(leave => leave.status?.toUpperCase() === 'PENDING')
             .sort((a, b) => new Date(b.createdAt || b.appliedDate || 0) - new Date(a.createdAt || a.appliedDate || 0))
             .slice(0, 3) // Only get the latest 3 pending requests
           : [];
+        console.log("Pending leaves found:", pendingLeaves);
         setPendingLeaveRequests(pendingLeaves);
       } else {
-        // If API fails, use mock data for development
-        const mockPendingLeaves = [
-          {
-            id: 1,
-            employeeId: "EMP001",
-            employeeName: "John Doe",
-            startDate: "2025-08-05",
-            endDate: "2025-08-07",
-            reason: "Family vacation",
-            status: "pending",
-            createdAt: "2025-08-01T10:00:00Z",
-            appliedDate: "2025-08-01"
-          },
-          {
-            id: 2,
-            employeeId: "EMP002", 
-            employeeName: "Jane Smith",
-            startDate: "2025-08-10",
-            endDate: "2025-08-12",
-            reason: "Medical appointment",
-            status: "pending",
-            createdAt: "2025-08-02T11:00:00Z",
-            appliedDate: "2025-08-02"
-          },
-          {
-            id: 3,
-            employeeId: "EMP003",
-            employeeName: "Mike Johnson", 
-            startDate: "2025-08-15",
-            endDate: "2025-08-16",
-            reason: "Personal work",
-            status: "pending",
-            createdAt: "2025-08-03T09:00:00Z",
-            appliedDate: "2025-08-03"
-          }
-        ];
-        setPendingLeaveRequests(mockPendingLeaves);
+        console.error("Failed to fetch leave requests:", response.status, response.statusText);
+        const errorText = await response.text();
+        console.error("Error response:", errorText);
+        
+        // Use empty array instead of mock data to see the actual error
+        setPendingLeaveRequests([]);
       }
     } catch (error) {
       console.error("Error fetching pending leave requests:", error);
-      // Use mock data on error
-      const mockPendingLeaves = [
-        {
-          id: 1,
-          employeeId: "EMP001",
-          employeeName: "John Doe",
-          startDate: "2025-08-05", 
-          endDate: "2025-08-07",
-          reason: "Family vacation",
-          status: "pending",
-          createdAt: "2025-08-01T10:00:00Z",
-          appliedDate: "2025-08-01"
-        },
-        {
-          id: 2,
-          employeeId: "EMP002",
-          employeeName: "Jane Smith",
-          startDate: "2025-08-10",
-          endDate: "2025-08-12", 
-          reason: "Medical appointment",
-          status: "pending",
-          createdAt: "2025-08-02T11:00:00Z",
-          appliedDate: "2025-08-02"
-        },
-        {
-          id: 3,
-          employeeId: "EMP003",
-          employeeName: "Mike Johnson",
-          startDate: "2025-08-15",
-          endDate: "2025-08-16",
-          reason: "Personal work", 
-          status: "pending",
-          createdAt: "2025-08-03T09:00:00Z",
-          appliedDate: "2025-08-03"
-        }
-      ];
-      setPendingLeaveRequests(mockPendingLeaves);
+      // Use empty array to see the actual error
+      setPendingLeaveRequests([]);
     } finally {
       setPendingLeavesLoading(false);
     }
@@ -225,6 +175,7 @@ export default function HRDashboard() {
 
   const handleToggleStatus = useCallback(async (employeeId, currentStatus) => {
     try {
+      console.log(`Toggling status for employee ${employeeId} from ${currentStatus} to ${!currentStatus}`);
       const res = await fetch(`/api/employees/${employeeId}/status`, {
         method: "PUT",
         headers: { 
@@ -234,8 +185,11 @@ export default function HRDashboard() {
         body: JSON.stringify({ isActive: !currentStatus }),
       });
 
+      console.log("Status update response:", res.status);
+
       if (res.ok) {
         const updatedEmployee = await res.json();
+        console.log("Employee status updated:", updatedEmployee);
         toast.success(
           `Employee ${!currentStatus ? 'enabled' : 'disabled'} successfully!`, 
           { position: "top-center" }
@@ -243,6 +197,7 @@ export default function HRDashboard() {
         fetchEmployees(); // Refresh the employee list
       } else {
         const errorData = await res.json();
+        console.error("Status update failed:", errorData);
         toast.error(
           errorData.message || `Failed to ${!currentStatus ? 'enable' : 'disable'} employee`, 
           { position: "top-center" }
@@ -266,27 +221,40 @@ export default function HRDashboard() {
     // Fetch updated employee information and leave data
     try {
       const employeeId = emp.employeeId || emp.id;
+      console.log("Fetching employee details for ID:", employeeId);
       
       // First, fetch the complete employee profile to get accurate totalLeaves
       const employeeResponse = await fetch(`/api/employees/${employeeId}`, {
         method: "GET",
         credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
       
       let completeEmployeeData = emp; // Fallback to original data
       if (employeeResponse.ok) {
         completeEmployeeData = await employeeResponse.json();
+        console.log("Complete employee data:", completeEmployeeData);
+      } else {
+        console.error("Failed to fetch employee details:", employeeResponse.status);
       }
       
       // Then fetch employee's leave data to calculate correct remaining leaves
       const leavesResponse = await fetch(`/api/leaves/${employeeId}`, {
         method: "GET",
         credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
       
       let leaveData = [];
       if (leavesResponse.ok) {
         leaveData = await leavesResponse.json();
+        console.log("Leave data for employee:", leaveData);
+      } else {
+        console.error("Failed to fetch leave data:", leavesResponse.status);
       }
       
       // Calculate leave statistics exactly like Employee Dashboard does
@@ -334,14 +302,28 @@ export default function HRDashboard() {
     setExpError(null);
     
     try {
-      const res = await fetch(`/api/employees/${emp.employeeId || emp.id}/experiences`);
+      console.log("Fetching past experiences for employee:", emp.employeeId || emp.id);
+      const res = await fetch(`/api/employees/${emp.employeeId || emp.id}/experiences`, {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      
+      console.log("Past experience response status:", res.status);
+      
       if (res.ok) {
         const data = await res.json();
+        console.log("Past experience data:", data);
         setExpData(Array.isArray(data) ? data : []);
       } else {
+        const errorText = await res.text();
+        console.error("Failed to load past experiences:", res.status, errorText);
         setExpError("Failed to load past experiences.");
       }
     } catch (err) {
+      console.error("Error loading past experiences:", err);
       setExpError("Error loading past experiences.");
     } finally {
       setExpLoading(false);

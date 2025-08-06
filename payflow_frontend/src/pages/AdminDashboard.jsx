@@ -243,9 +243,26 @@ export default function AdminDashboard({ active }) {
     try {
       setLoading(true);
       setError("");
-      const res = await fetch("/api/users/getAllUsers");
-      if (!res.ok) throw new Error("Failed to fetch users");
+      console.log("Fetching users...");
+      const res = await fetch("/api/users/getAllUsers", {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      
+      console.log("Users response status:", res.status);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Failed to fetch users:", res.status, errorText);
+        throw new Error(`Failed to fetch users: ${res.status}`);
+      }
+      
       const data = await res.json();
+      console.log("Users data received:", data);
+      
       const usersArray = Array.isArray(data)
         ? data
         : Array.isArray(data.users)
@@ -255,8 +272,10 @@ export default function AdminDashboard({ active }) {
         ...u,
         status: u.status === true ? "active" : "inactive",
       }));
+      console.log("Mapped users:", mappedUsers);
       setUsers(mappedUsers);
     } catch (err) {
+      console.error("Error fetching users:", err);
       setError(err.message || "Failed to fetch users");
       setUsers([]);
     } finally {
@@ -277,9 +296,11 @@ export default function AdminDashboard({ active }) {
     setError("");
     setLoading(true);
     try {
+      console.log("Submitting user registration:", form);
       const res = await fetch("/api/users/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           username: form.username,
           email: form.email,
@@ -287,8 +308,11 @@ export default function AdminDashboard({ active }) {
         }),
       });
 
+      console.log("Registration response status:", res.status);
+
       if (!res.ok) {
         const errorText = await res.text();
+        console.error("Registration failed:", res.status, errorText);
         if (errorText.includes("duplicate")) {
           throw new Error(
             "Email or username already exists. Please use a different one."
@@ -298,6 +322,7 @@ export default function AdminDashboard({ active }) {
       }
 
       const newUser = await res.json();
+      console.log("User registered successfully:", newUser);
       // setCreated(newUser); // removed unused state
       setForm({ username: "", email: "", role: "hr" });
       fetchUsers();
@@ -322,15 +347,27 @@ export default function AdminDashboard({ active }) {
       const user = users.find((u) => u.id === id || u.userId === id);
       if (!user) throw new Error("User not found");
       const newStatusBool = user.status === "active" ? false : true;
+      console.log(`Toggling user ${id} status from ${user.status} to ${newStatusBool ? 'active' : 'inactive'}`);
+      
       const res = await fetch(`/api/users/${id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ status: newStatusBool }),
       });
-      if (!res.ok) throw new Error("Failed to update user status");
+      
+      console.log("Status update response:", res.status);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Failed to update user status:", res.status, errorText);
+        throw new Error("Failed to update user status");
+      }
+      
       toast.success(`User status updated successfully`);
       fetchUsers();
     } catch (err) {
+      console.error("Error updating user status:", err);
       toast.error(err.message || "Failed to update user");
       setError(err.message || "Failed to update user");
     } finally {
@@ -470,12 +507,30 @@ export default function AdminDashboard({ active }) {
       setLoading(true);
       setError("");
       try {
-        const res = await fetch("/api/employees/getAll");
-        if (!res.ok) throw new Error("Failed to fetch employees");
+        console.log("Fetching employees...");
+        const res = await fetch("/api/employees/getAll", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        
+        console.log("Employees response status:", res.status);
+        
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error("Failed to fetch employees:", res.status, errorText);
+          throw new Error(`Failed to fetch employees: ${res.status}`);
+        }
+        
         const data = await res.json();
-        setEmployees(data);
+        console.log("Employees data received:", data);
+        setEmployees(Array.isArray(data) ? data : []);
       } catch (err) {
+        console.error("Error fetching employees:", err);
         setError(err.message || "Failed to fetch employees");
+        setEmployees([]);
       } finally {
         setLoading(false);
       }

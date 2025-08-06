@@ -2,6 +2,7 @@ package com.example.payflow_backend.model;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -67,6 +68,12 @@ public class Employee {
     @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JsonManagedReference
     private List<PastExperience> pastExperiences;
+
+    // 🔽 One-to-Many Relationship with CTC Details
+    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonManagedReference
+    @JsonIgnore  // Exclude from JSON serialization to prevent lazy loading issues
+    private List<CTC> ctcDetails;
 
 
     public boolean isTempPassword() {

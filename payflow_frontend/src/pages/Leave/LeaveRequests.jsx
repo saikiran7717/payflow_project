@@ -196,8 +196,35 @@ export default function LeaveRequests() {
         // Refresh the list and maintain current page if possible
         await fetchLeaveRequests();
       } else {
-        const errorText = await response.text();
-        toast.error(errorText || `Failed to ${action} leave request`, { position: "top-center" });
+        // Handle error response properly
+        let errorMessage = `Failed to ${action} leave request`;
+        
+        try {
+          // Try to parse as JSON first (for our custom error responses)
+          const errorData = await response.json();
+          
+          if (errorData.type === "INSUFFICIENT_LEAVES") {
+            errorMessage = `Cannot approve leave: Employee has only ${errorData.remainingLeaves} remaining leaves but requested ${errorData.requestedLeaves} days.`;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          }
+        } catch (e) {
+          // If JSON parsing fails, try to get as text
+          try {
+            const errorText = await response.text();
+            if (errorText) {
+              errorMessage = errorText;
+            }
+          } catch (textError) {
+            // Use default error message if both JSON and text parsing fail
+            console.error("Error parsing error response:", textError);
+          }
+        }
+        
+        toast.error(errorMessage, { 
+          position: "top-center",
+          autoClose: 5000, // Show error longer for important messages
+        });
       }
     } catch (error) {
       console.error(`Error ${action}ing leave request:`, error);

@@ -7,6 +7,31 @@ import { useAuth } from "../../authContext.jsx";
 import { useNavigate } from "react-router-dom";
 import "react-toastify/dist/ReactToastify.css";
 
+// Add custom CSS for date input styling
+const dateInputStyle = `
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    color: #374151 !important;
+    opacity: 1 !important;
+    cursor: pointer;
+    background: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%23374151" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>') no-repeat center center;
+    background-size: 16px 16px;
+    filter: none !important;
+  }
+  
+  input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    background-color: #f3f4f6;
+    border-radius: 3px;
+  }
+`;
+
+// Add style tag to document head
+if (typeof document !== 'undefined' && !document.getElementById('date-input-styles')) {
+  const style = document.createElement('style');
+  style.id = 'date-input-styles';
+  style.textContent = dateInputStyle;
+  document.head.appendChild(style);
+}
+
 export default function AddEmployee() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -19,7 +44,9 @@ export default function AddEmployee() {
 
   const fetchCurrentUserRole = async () => {
     try {
-      const res = await fetch("/api/employees/current-user-role");
+      const res = await fetch("/api/employees/current-user-role", {
+        credentials: "include"
+      });
       if (res.ok) {
         const userData = await res.json();
         console.log("User data received:", userData); // Debug log
@@ -45,7 +72,9 @@ export default function AddEmployee() {
   const fetchManagers = async () => {
     setManagersLoading(true);
     try {
-      const res = await fetch("/api/employees/managers");
+      const res = await fetch("/api/employees/managers", {
+        credentials: "include"
+      });
       if (res.ok) {
         const managersData = await res.json();
         console.log("Managers data received:", managersData); // Debug log
@@ -86,7 +115,17 @@ export default function AddEmployee() {
     managerId: "",
     pastExperiences: [
       { companyName: "", role: "", years: "" }
-    ]
+    ],
+    // CTC Details (HR only)
+    ctcDetails: {
+      effectiveFrom: "",
+      basicSalary: "",
+      allowances: "",
+      bonuses: "",
+      pfContribution: "",
+      gratuity: "",
+      totalCtc: ""
+    }
   });
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -276,6 +315,127 @@ export default function AddEmployee() {
     return "";
   };
 
+  // CTC Validation Functions (HR only)
+  const validateEffectiveFrom = (date) => {
+    if (!date) return "Effective from date is required";
+    const selectedDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (selectedDate < today) return "Effective date cannot be in the past";
+    return "";
+  };
+
+  const validateBasicSalary = (salary) => {
+    if (!salary) return "Basic salary is required";
+    const salaryNum = Number(salary);
+    if (isNaN(salaryNum)) return "Basic salary must be a number";
+    if (salaryNum < 0) return "Basic salary cannot be negative";
+    if (salaryNum < 10000) return "Basic salary must be at least ₹10,000";
+    if (salaryNum > 10000000) return "Basic salary cannot exceed ₹1,00,00,000";
+    return "";
+  };
+
+  const validateCTCAmount = (amount, fieldName) => {
+    if (amount && amount.trim()) {
+      const amountNum = Number(amount);
+      if (isNaN(amountNum)) return `${fieldName} must be a number`;
+      if (amountNum < 0) return `${fieldName} cannot be negative`;
+      if (amountNum > 5000000) return `${fieldName} cannot exceed ₹50,00,000`;
+    }
+    return "";
+  };
+
+  const validateTotalCtc = (totalCtc) => {
+    if (!totalCtc) return "Total CTC is required";
+    const ctcNum = Number(totalCtc);
+    if (isNaN(ctcNum)) return "Total CTC must be a number";
+    if (ctcNum < 0) return "Total CTC cannot be negative";
+    if (ctcNum < 100000) return "Total CTC must be at least ₹1,00,000";
+    if (ctcNum > 20000000) return "Total CTC cannot exceed ₹2,00,00,000";
+    return "";
+  };
+
+  const validateCTCDetails = () => {
+    const errors = {};
+    const ctc = form.ctcDetails;
+    
+    const effectiveFromError = validateEffectiveFrom(ctc.effectiveFrom);
+    if (effectiveFromError) errors.effectiveFrom = effectiveFromError;
+    
+    const basicSalaryError = validateBasicSalary(ctc.basicSalary);
+    if (basicSalaryError) errors.basicSalary = basicSalaryError;
+    
+    const allowancesError = validateCTCAmount(ctc.allowances, "Allowances");
+    if (allowancesError) errors.allowances = allowancesError;
+    
+    const bonusesError = validateCTCAmount(ctc.bonuses, "Bonuses");
+    if (bonusesError) errors.bonuses = bonusesError;
+    
+    const pfError = validateCTCAmount(ctc.pfContribution, "PF Contribution");
+    if (pfError) errors.pfContribution = pfError;
+    
+    const gratuityError = validateCTCAmount(ctc.gratuity, "Gratuity");
+    if (gratuityError) errors.gratuity = gratuityError;
+    
+    const totalCtcError = validateTotalCtc(ctc.totalCtc);
+    if (totalCtcError) errors.totalCtc = totalCtcError;
+    
+    return errors;
+  };
+
+  // Handle CTC field changes
+  const handleCTCChange = (e) => {
+    const { name, value } = e.target;
+    setForm(prev => ({
+      ...prev,
+      ctcDetails: {
+        ...prev.ctcDetails,
+        [name]: value
+      }
+    }));
+    
+    // Clear CTC validation errors when user starts typing
+    if (validationErrors.ctc && validationErrors.ctc[name]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        ctc: {
+          ...prev.ctc,
+          [name]: undefined
+        }
+      }));
+    }
+  };
+
+  // Auto-calculate total CTC when components change
+  const calculateTotalCTC = () => {
+    const ctc = form.ctcDetails;
+    const basic = Number(ctc.basicSalary) || 0;
+    const allowances = Number(ctc.allowances) || 0;
+    const bonuses = Number(ctc.bonuses) || 0;
+    const pf = Number(ctc.pfContribution) || 0;
+    const gratuity = Number(ctc.gratuity) || 0;
+    
+    const total = basic + allowances + bonuses + pf + gratuity;
+    return total.toString();
+  };
+
+  // Auto-calculate total CTC when any component changes
+  React.useEffect(() => {
+    if (currentUserRole === "HR") {
+      const newTotal = calculateTotalCTC();
+      if (newTotal !== form.ctcDetails.totalCtc) {
+        setForm(prev => ({
+          ...prev,
+          ctcDetails: {
+            ...prev.ctcDetails,
+            totalCtc: newTotal
+          }
+        }));
+      }
+    }
+  }, [form.ctcDetails.basicSalary, form.ctcDetails.allowances, 
+      form.ctcDetails.bonuses, form.ctcDetails.pfContribution, form.ctcDetails.gratuity, currentUserRole]);
+
   const validatePage1 = () => {
     const errors = {};
     
@@ -342,6 +502,15 @@ export default function AddEmployee() {
     return Object.keys(errors).length === 0;
   };
 
+  const validatePage4 = () => {
+    // Only validate CTC details if user is HR
+    if (currentUserRole !== "HR") return true;
+    
+    const ctcErrors = validateCTCDetails();
+    setValidationErrors({ ctc: ctcErrors });
+    return Object.keys(ctcErrors).length === 0;
+  };
+
   const handleNext = e => {
     e.preventDefault();
     
@@ -356,6 +525,18 @@ export default function AddEmployee() {
       isValid = validatePage2();
       if (!isValid) {
         toast.error("Please fix the validation errors before proceeding to the next page");
+        return;
+      }
+    } else if (page === 3) {
+      isValid = validatePage3();
+      if (!isValid) {
+        toast.error("Please fix the validation errors before proceeding to the next page");
+        return;
+      }
+    } else if (page === 4 && user.role === 'HR') {
+      isValid = validatePage4();
+      if (!isValid) {
+        toast.error("Please fix the CTC validation errors before proceeding");
         return;
       }
     }
@@ -376,6 +557,12 @@ export default function AddEmployee() {
     
     if (!validatePage3()) {
       toast.error("Please fix the validation errors before submitting");
+      return;
+    }
+    
+    // Validate CTC details for HR users
+    if (user.role === 'HR' && !validatePage4()) {
+      toast.error("Please fix the CTC validation errors before submitting");
       return;
     }
     
@@ -416,15 +603,129 @@ export default function AddEmployee() {
         }))
       };
       
+      // Validate required fields before sending
+      const requiredFields = ['fullName', 'email', 'age', 'phone', 'address', 'gender', 'degree', 'university', 'graduationYear', 'grade', 'designation', 'department', 'totalLeaves'];
+      const missingFields = requiredFields.filter(field => !employeeData[field] || employeeData[field] === '');
+      
+      if (missingFields.length > 0) {
+        console.error("Missing required fields:", missingFields);
+        toast.error(`Missing required fields: ${missingFields.join(', ')}`);
+        return;
+      }
+      
+      // Validate managerId for HR users
+      if (currentUserRole === "HR" && (!employeeData.managerId || isNaN(employeeData.managerId))) {
+        console.error("Manager ID is required for HR users and must be a valid number");
+        toast.error("Please select a manager");
+        return;
+      }
+      
       console.log("Sending employee data to backend:", employeeData); // Debug log
       
       const res = await fetch("/api/employees/add", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(employeeData)
       });
-      if (!res.ok) throw new Error("Failed to add employee");
-      toast.success("Employee added successfully!");
+      
+      console.log("Response status:", res.status);
+      console.log("Response headers:", res.headers);
+      
+      if (!res.ok) {
+        let errorMessage = `Failed to add employee: ${res.status}`;
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (e) {
+          // If JSON parsing fails, try text
+          try {
+            const errorText = await res.text();
+            errorMessage = errorText || errorMessage;
+          } catch (e2) {
+            // Use default message if both fail
+          }
+        }
+        console.error("Error response:", errorMessage);
+        throw new Error(errorMessage);
+      }
+      
+      // Check if response is JSON or plain text
+      const contentType = res.headers.get('content-type');
+      let responseData;
+      let newEmployee;
+      
+      if (contentType && contentType.includes('application/json')) {
+        responseData = await res.json();
+        console.log("Employee creation response:", responseData);
+        
+        // Extract employee data from response
+        newEmployee = responseData.employee || { id: responseData.id };
+        console.log("Employee created successfully:", newEmployee);
+        console.log("Full response data:", responseData);
+        console.log("Employee ID from response.id:", responseData.id);
+        console.log("Employee ID from response.employee.employeeId:", responseData.employee?.employeeId);
+      } else {
+        // Handle plain text response
+        const responseText = await res.text();
+        console.log("Employee creation response:", responseText);
+        // Create a mock employee object for CTC processing
+        newEmployee = { id: Date.now() }; // Temporary ID
+      }
+      
+      // If HR user, save CTC details
+      if (user.role === 'HR' && form.ctcDetails.basicSalary) {
+        try {
+          // Get the employee ID from the response - check multiple possible properties
+          const employeeId = newEmployee.employeeId || newEmployee.id || responseData.id;
+          
+          if (!employeeId) {
+            console.error("No employee ID found in response:", { newEmployee, responseData });
+            toast.warning("Employee added but CTC details could not be saved - missing employee ID");
+          } else {
+            const ctcData = {
+              effectiveFrom: form.ctcDetails.effectiveFrom,
+              basicSalary: parseFloat(form.ctcDetails.basicSalary),
+              allowances: parseFloat(form.ctcDetails.allowances),
+              bonuses: parseFloat(form.ctcDetails.bonuses),
+              pfContribution: parseFloat(form.ctcDetails.pfContribution),
+              gratuity: parseFloat(form.ctcDetails.gratuity),
+              totalCtc: parseFloat(form.ctcDetails.totalCtc),
+              isActive: true
+            };
+            
+            console.log("Sending CTC data to backend for employee ID:", employeeId);
+            console.log("CTC data:", ctcData);
+            
+            const ctcRes = await fetch(`/api/ctc/employee/${employeeId}`, {
+              method: "POST",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(ctcData)
+            });
+            
+            console.log("CTC response status:", ctcRes.status);
+            
+            if (!ctcRes.ok) {
+              const errorText = await ctcRes.text();
+              console.error("Failed to save CTC details:", ctcRes.status, errorText);
+              toast.warning("Employee added but CTC details could not be saved: " + errorText);
+            } else {
+              const ctcResponse = await ctcRes.json();
+              console.log("CTC details saved successfully:", ctcResponse);
+              toast.success("Employee and CTC details added successfully!");
+            }
+          }
+        } catch (ctcError) {
+          console.error("Error saving CTC details:", ctcError);
+          toast.warning("Employee added but CTC details could not be saved");
+        }
+      }
+      
+      // Show success message only if CTC was not processed or if there was no CTC data
+      if (user.role !== 'HR' || !form.ctcDetails.basicSalary) {
+        toast.success("Employee added successfully!");
+      }
       
       // Reset form
       const resetForm = {
@@ -442,7 +743,16 @@ export default function AddEmployee() {
         department: "",
         totalLeaves: "",
         managerId: currentUserRole === "MANAGER" ? currentUser?.userId || "" : "",
-        pastExperiences: [{ companyName: "", role: "", years: "" }]
+        pastExperiences: [{ companyName: "", role: "", years: "" }],
+        ctcDetails: {
+          effectiveFrom: "",
+          basicSalary: "",
+          allowances: "",
+          bonuses: "",
+          pfContribution: "",
+          gratuity: "",
+          totalCtc: ""
+        }
       };
       setForm(resetForm);
       setPage(1);
@@ -816,6 +1126,145 @@ export default function AddEmployee() {
       </div>
     </div>
   ];
+
+  // Add CTC details page for HR users only
+  if (user.role === 'HR') {
+    pages.push(
+      // Page 4: CTC Details (HR only)
+      <div>
+        <h3 style={{ fontWeight: 700, fontSize: "1.25rem", color: "#6366f1", marginBottom: 18, letterSpacing: 0.5 }}>CTC Details</h3>
+        <p style={{ color: "#64748b", marginBottom: 20, fontSize: "0.9rem" }}>
+          Configure compensation and benefits for the new employee
+        </p>
+        
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 60, rowGap: 18 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <label style={labelStyle}>Effective From</label>
+            <input 
+              name="effectiveFrom" 
+              value={form.ctcDetails.effectiveFrom} 
+              onChange={handleCTCChange} 
+              type="date"
+              style={{
+                ...inputStyle,
+                borderColor: validationErrors.ctc?.effectiveFrom ? "#ef4444" : "#cbd5e1",
+                colorScheme: "light"
+              }} 
+            />
+            <ErrorMessage error={validationErrors.ctc?.effectiveFrom} />
+          </div>
+          
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <label style={labelStyle}>Basic Salary (₹)</label>
+            <input 
+              name="basicSalary" 
+              value={form.ctcDetails.basicSalary} 
+              onChange={handleCTCChange} 
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="Enter basic salary"
+              style={{
+                ...inputStyle,
+                borderColor: validationErrors.ctc?.basicSalary ? "#ef4444" : "#cbd5e1"
+              }} 
+            />
+            <ErrorMessage error={validationErrors.ctc?.basicSalary} />
+          </div>
+          
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <label style={labelStyle}>Allowances (₹)</label>
+            <input 
+              name="allowances" 
+              value={form.ctcDetails.allowances} 
+              onChange={handleCTCChange} 
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="HRA, Transport, Medical, etc."
+              style={{
+                ...inputStyle,
+                borderColor: validationErrors.ctc?.allowances ? "#ef4444" : "#cbd5e1"
+              }} 
+            />
+            <ErrorMessage error={validationErrors.ctc?.allowances} />
+          </div>
+          
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <label style={labelStyle}>Annual Bonuses (₹)</label>
+            <input 
+              name="bonuses" 
+              value={form.ctcDetails.bonuses} 
+              onChange={handleCTCChange} 
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="Performance, festival bonuses"
+              style={{
+                ...inputStyle,
+                borderColor: validationErrors.ctc?.bonuses ? "#ef4444" : "#cbd5e1"
+              }} 
+            />
+            <ErrorMessage error={validationErrors.ctc?.bonuses} />
+          </div>
+          
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <label style={labelStyle}>PF Contribution (₹)</label>
+            <input 
+              name="pfContribution" 
+              value={form.ctcDetails.pfContribution} 
+              onChange={handleCTCChange} 
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="Provident Fund"
+              style={{
+                ...inputStyle,
+                borderColor: validationErrors.ctc?.pfContribution ? "#ef4444" : "#cbd5e1"
+              }} 
+            />
+            <ErrorMessage error={validationErrors.ctc?.pfContribution} />
+          </div>
+          
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <label style={labelStyle}>Gratuity (₹)</label>
+            <input 
+              name="gratuity" 
+              value={form.ctcDetails.gratuity} 
+              onChange={handleCTCChange} 
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="Annual gratuity amount"
+              style={{
+                ...inputStyle,
+                borderColor: validationErrors.ctc?.gratuity ? "#ef4444" : "#cbd5e1"
+              }} 
+            />
+            <ErrorMessage error={validationErrors.ctc?.gratuity} />
+          </div>
+          
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <label style={labelStyle}>Total CTC (₹)</label>
+            <input 
+              name="totalCtc" 
+              value={form.ctcDetails.totalCtc} 
+              readOnly
+              style={{
+                ...inputStyle,
+                backgroundColor: "#f8fafc",
+                fontWeight: "600",
+                color: "#1e293b"
+              }} 
+            />
+            <small style={{ color: "#64748b", fontSize: "0.85rem" }}>
+              Auto-calculated from above components
+            </small>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

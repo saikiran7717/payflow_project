@@ -52,7 +52,7 @@ public class EmployeeController {
     // ✅ Modified Add Employee (Handles pastExperiences directly)
     @PreAuthorize("hasAnyRole('HR','MANAGER')")
     @PostMapping("/add")
-    public ResponseEntity<String> addEmployee(@RequestBody Map<String, Object> employeeData, Authentication authentication) {
+    public ResponseEntity<?> addEmployee(@RequestBody Map<String, Object> employeeData, Authentication authentication) {
         try {
             Employee employee = new Employee();
             employee.setFullName((String) employeeData.get("fullName"));
@@ -72,13 +72,13 @@ public class EmployeeController {
             employee.setTotalExperience(((Number) employeeData.get("totalExperience")).intValue());
 
             if (service.existsByEmail(employee.getEmail())) {
-                return ResponseEntity.badRequest().body("Employee with this email already exists.");
+                return ResponseEntity.badRequest().body(Map.of("error", "Employee with this email already exists."));
             }
 
             String username = authentication.getName();
             User onboardedBy = userRepository.findByEmail(username).orElse(null);
             if (onboardedBy == null) {
-                return ResponseEntity.status(401).body("Unauthorized or user not found.");
+                return ResponseEntity.status(401).body(Map.of("error", "Unauthorized or user not found."));
             }
 
             // Handle manager assignment based on user role
@@ -91,7 +91,7 @@ public class EmployeeController {
                 if (managerId != null) {
                     manager = userRepository.findById(managerId).orElse(null);
                     if (manager == null || !"MANAGER".equals(manager.getRole())) {
-                        return ResponseEntity.badRequest().body("Invalid manager selected.");
+                        return ResponseEntity.badRequest().body(Map.of("error", "Invalid manager selected."));
                     }
                 }
             } else if ("MANAGER".equals(onboardedBy.getRole())) {
@@ -134,9 +134,16 @@ public class EmployeeController {
             }
 
             emailService.sendCredentials(employee.getEmail(), tempPassword);
-            return ResponseEntity.ok("Employee added and credentials emailed successfully.");
+            
+            // Return the created employee as JSON instead of plain text
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Employee added and credentials emailed successfully.");
+            response.put("employee", savedEmployee);
+            response.put("id", savedEmployee.getEmployeeId());
+            
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error adding employee: " + e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", "Error adding employee: " + e.getMessage()));
         }
     }
 
@@ -351,6 +358,28 @@ public class EmployeeController {
         employee.setIsActive(isActive);
         employeeRepo.save(employee);
         return ResponseEntity.ok(employee);
+    }
+
+    // ✅ Admin endpoint to reset extra leaves for all employees (for testing/monthly reset)
+    @PostMapping("/reset-extra-leaves")
+    @PreAuthorize("hasRole('HR')")
+    public ResponseEntity<Map<String, Object>> resetExtraLeaves() {
+        List<Employee> allEmployees = employeeRepo.findAll();
+        int resetCount = 0;
+        
+        for (Employee employee : allEmployees) {
+            employee.setExtraLeavesThisMonth(0);
+            resetCount++;
+        }
+        
+        employeeRepo.saveAll(allEmployees);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Extra leaves reset successfully for all employees");
+        response.put("employeesAffected", resetCount);
+        response.put("timestamp", new Date());
+        
+        return ResponseEntity.ok(response);
     }
 
 
