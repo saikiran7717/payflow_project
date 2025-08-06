@@ -40,44 +40,47 @@ export default function Login() {
       });
       
       if (!res.ok) {
-        let errorMsg = "Incorrect email or password. Please try again.";
+        let errorMsg = "Invalid email or password.";
         
-        if (res.status === 401) {
-          // Handle invalid credentials - check this first
-          try {
-            const errorData = await res.json();
-            errorMsg = errorData.error || "Invalid email or password.";
-          } catch (parseError) {
-            errorMsg = "Invalid email or password.";
-          }
-          toast.error(errorMsg, { position: "top-center" });
-          setError(errorMsg);
-        } else if (res.status === 403) {
-          // Handle account disabled case - check message to distinguish from auth failure
-          try {
-            const errorData = await res.json();
-            // Only show disabled message if it specifically mentions disabled/blocked
-            if (errorData.error && (errorData.error.toLowerCase().includes('disabled') || errorData.error.toLowerCase().includes('blocked'))) {
+        try {
+          const errorData = await res.json();
+          
+          // Check for authentication-related errors
+          if (res.status === 401 || res.status === 400) {
+            // Handle invalid credentials
+            if (errorData.error && errorData.error.toLowerCase().includes('invalid')) {
+              errorMsg = "Invalid email or password.";
+            } else if (errorData.error && errorData.error.toLowerCase().includes('incorrect')) {
+              errorMsg = "Invalid email or password.";
+            } else if (errorData.error && errorData.error.toLowerCase().includes('not found')) {
+              errorMsg = "Invalid email or password.";
+            } else if (errorData.error && errorData.error.toLowerCase().includes('wrong')) {
+              errorMsg = "Invalid email or password.";
+            } else {
+              errorMsg = "Invalid email or password.";
+            }
+          } else if (res.status === 403) {
+            // Handle account disabled case
+            if (errorData.error && (
+              errorData.error.toLowerCase().includes('disabled') || 
+              errorData.error.toLowerCase().includes('blocked') ||
+              errorData.error.toLowerCase().includes('inactive')
+            )) {
               errorMsg = errorData.error || "Your account is disabled. Please contact HR/Manager.";
             } else {
               errorMsg = "Invalid email or password.";
             }
-          } catch (parseError) {
+          } else {
+            // For any other error status, default to invalid credentials message
             errorMsg = "Invalid email or password.";
           }
-          toast.error(errorMsg, { position: "top-center" });
-          setError(errorMsg);
-        } else {
-          // Handle other errors
-          try {
-            const errorData = await res.json();
-            errorMsg = errorData.error || errorData.message || "Login failed. Please try again.";
-          } catch (parseError) {
-            errorMsg = "Login failed. Please try again.";
-          }
-          toast.error(errorMsg, { position: "top-center" });
-          setError(errorMsg);
+        } catch (parseError) {
+          // If we can't parse the error response, show generic auth error
+          errorMsg = "Invalid email or password.";
         }
+        
+        toast.error(errorMsg, { position: "top-center" });
+        setError(errorMsg);
         setLoading(false);
         return;
       }

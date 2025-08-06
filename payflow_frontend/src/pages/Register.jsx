@@ -33,10 +33,23 @@ const RegisterPage = () => {
       });
       if (!res.ok) {
         const errorText = await res.text();
-        if (errorText.includes("duplicate")) {
-          throw new Error("Email or username already exists. Please use a different one.");
+        console.error("Registration error response:", errorText);
+        
+        let errorMessage = "Registration failed";
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch (e) {
+          // If response is not JSON, use the text directly
+          if (errorText.includes("duplicate") || errorText.includes("already")) {
+            errorMessage = "Email or username already exists. Please use a different one.";
+          } else {
+            errorMessage = errorText || "Registration failed";
+          }
         }
-        throw new Error("Registration failed");
+        throw new Error(errorMessage);
       }
       const data = await res.json();
       setCreated(data);

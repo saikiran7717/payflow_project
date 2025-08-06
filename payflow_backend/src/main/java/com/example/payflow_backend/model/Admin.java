@@ -4,13 +4,22 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
+@Table(name = "admin", uniqueConstraints = {
+    @UniqueConstraint(columnNames = "email"),
+    @UniqueConstraint(columnNames = "username")
+})
 public class Admin {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long adminId;
 
+    @Column(nullable = false, unique = true)
     private String username;
+    
+    @Column(nullable = false, unique = true)
     private String email;
+    
+    @Column(nullable = false)
     private String passwordHash;
 
     private LocalDateTime createdAt = LocalDateTime.now();

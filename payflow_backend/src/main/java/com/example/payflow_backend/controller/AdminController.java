@@ -35,13 +35,31 @@ public class AdminController {
             String email = request.get("email");
             String password = request.get("password");
 
-            Admin newAdmin = adminService.register(username, email, password);
+            // Validate input
+            if (username == null || username.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Username is required"));
+            }
+            if (email == null || email.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
+            }
+            if (password == null || password.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Password is required"));
+            }
+
+            Admin newAdmin = adminService.register(username.trim(), email.trim(), password);
             return ResponseEntity.ok(Map.of(
                     "message", "Registration successful",
-                    "adminId", newAdmin.getAdminId()
+                    "adminId", newAdmin.getAdminId(),
+                    "email", newAdmin.getEmail(),
+                    "username", newAdmin.getUsername()
             ));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            // Log the full exception for debugging
+            System.err.println("Registration error: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("error", "Registration failed: " + e.getMessage()));
         }
     }
 

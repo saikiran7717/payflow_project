@@ -19,19 +19,28 @@ public class AdminService {
 
     // ✅ Register new admin with uniqueness checks
     public Admin register(String username, String email, String password) {
-        if (adminRepository.findByEmail(email).isPresent()) {
-            throw new RuntimeException("Email already registered. Please use a different email.");
-        }
+        try {
+            if (adminRepository.findByEmail(email).isPresent()) {
+                throw new RuntimeException("Email already registered. Please use a different email.");
+            }
 
-        if (adminRepository.findByUsername(username).isPresent()) {
-            throw new RuntimeException("Username already taken. Please choose a different username.");
-        }
+            if (adminRepository.findByUsername(username).isPresent()) {
+                throw new RuntimeException("Username already taken. Please choose a different username.");
+            }
 
-        Admin admin = new Admin();
-        admin.setUsername(username);
-        admin.setEmail(email);
-        admin.setPasswordHash(encoder.encode(password));
-        return adminRepository.save(admin);
+            Admin admin = new Admin();
+            admin.setUsername(username);
+            admin.setEmail(email);
+            admin.setPasswordHash(encoder.encode(password));
+            
+            Admin savedAdmin = adminRepository.save(admin);
+            System.out.println("Admin registered successfully: " + savedAdmin.getEmail());
+            return savedAdmin;
+        } catch (Exception e) {
+            System.err.println("Error during admin registration: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Registration failed: " + e.getMessage());
+        }
     }
 
     public Optional<Admin> findByEmail(String email) {

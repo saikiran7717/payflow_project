@@ -676,8 +676,8 @@ export default function CTCInfo() {
                     {ctcData ? "Edit CTC Details" : "Create New CTC"}
                   </h3>
                   
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20 }}>
-                    <div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "24px 32px" }}>
+                    <div style={{ marginBottom: "4px" }}>
                       <label style={{ display: "block", fontWeight: 700, color: palette.dark, marginBottom: 8 }}>
                         Basic Salary (Annual) *
                       </label>
@@ -710,7 +710,7 @@ export default function CTCInfo() {
                       />
                     </div>
                     
-                    <div>
+                    <div style={{ marginBottom: "4px" }}>
                       <label style={{ display: "block", fontWeight: 700, color: palette.dark, marginBottom: 8 }}>
                         Allowances (Annual)
                       </label>
@@ -743,7 +743,7 @@ export default function CTCInfo() {
                       />
                     </div>
                     
-                    <div>
+                    <div style={{ marginBottom: "4px" }}>
                       <label style={{ display: "block", fontWeight: 700, color: palette.dark, marginBottom: 8 }}>
                         Annual Bonus
                       </label>
@@ -776,7 +776,7 @@ export default function CTCInfo() {
                       />
                     </div>
                     
-                    <div>
+                    <div style={{ marginBottom: "4px" }}>
                       <label style={{ display: "block", fontWeight: 700, color: palette.dark, marginBottom: 8 }}>
                         PF Contribution (Annual)
                       </label>
@@ -809,7 +809,7 @@ export default function CTCInfo() {
                       />
                     </div>
                     
-                    <div>
+                    <div style={{ marginBottom: "4px" }}>
                       <label style={{ display: "block", fontWeight: 700, color: palette.dark, marginBottom: 8 }}>
                         Gratuity (Annual)
                       </label>
@@ -842,7 +842,7 @@ export default function CTCInfo() {
                       />
                     </div>
                     
-                    <div>
+                    <div style={{ marginBottom: "4px" }}>
                       <label style={{ display: "block", fontWeight: 700, color: palette.dark, marginBottom: 8 }}>
                         Effective From *
                       </label>
