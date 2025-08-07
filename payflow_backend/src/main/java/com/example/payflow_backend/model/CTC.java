@@ -98,7 +98,7 @@ public class CTC {
         return BigDecimal.ZERO;
     }
 
-    // Utility method to get net monthly salary (after PF deduction)
+    // Utility method to get net monthly salary (after PF deduction and gratuity)
     public BigDecimal getNetMonthlySalary() {
         BigDecimal monthly = getMonthlySalary();
         if (pfContribution != null) {

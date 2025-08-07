@@ -1,24 +1,21 @@
-
 import React, { useState, useEffect } from "react";
-import Sidebar from "../../components/Sidebar";
-import DynamicNavigation from "../../components/DynamicNavigation";
-import { ToastContainer, toast } from "react-toastify";
+import DynamicNavigation from "../components/DynamicNavigation.jsx";
+import EmployeeSidebar from "../components/EmployeeSidebar.jsx";
 import { FaDownload, FaEye, FaCalendarAlt, FaUser, FaFileInvoiceDollar } from "react-icons/fa";
-import { useAuth } from "../../authContext.jsx";
+import { useAuth } from "../authContext.jsx";
+import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-export default function PayslipGeneration() {
+export default function EmployeePayslips() {
   const { user } = useAuth();
   const [selectedMonth, setSelectedMonth] = useState("");
-  const [selectedEmployee, setSelectedEmployee] = useState("");
-  const [employees, setEmployees] = useState([]);
   const [payrollData, setPayrollData] = useState([]);
   const [selectedPayroll, setSelectedPayroll] = useState(null);
   const [showPayslip, setShowPayslip] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [employeesLoading, setEmployeesLoading] = useState(false);
+  const [employee, setEmployee] = useState(null);
 
   const palette = {
     accent: "#6366f1",
@@ -34,55 +31,36 @@ export default function PayslipGeneration() {
   };
 
   useEffect(() => {
-    fetchEmployees();
+    // Get employee data from localStorage
+    const userData = localStorage.getItem("payflow_user");
+    if (userData) {
+      const employeeData = JSON.parse(userData);
+      setEmployee(employeeData);
+    }
+    
     // Set default month to previous month
     const previousMonth = new Date();
     previousMonth.setMonth(previousMonth.getMonth() - 1);
     setSelectedMonth(previousMonth.toISOString().slice(0, 7));
   }, []);
 
-  // Fetch employees
-  const fetchEmployees = async () => {
-    setEmployeesLoading(true);
-    try {
-      const res = await fetch("/api/employees/getAll", {
-        credentials: "include"
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setEmployees(data.filter(emp => emp.isActive));
-      }
-    } catch (error) {
-      console.error("Error fetching employees:", error);
-      toast.error("Failed to fetch employees");
-    } finally {
-      setEmployeesLoading(false);
-    }
-  };
-
-  // Fetch payroll data
+  // Fetch payroll data for the logged-in employee
   const fetchPayrollData = async () => {
-    if (!selectedMonth) return;
+    if (!selectedMonth || !employee) return;
 
     setLoading(true);
     try {
-      let url = `/api/payroll/month/${selectedMonth}`;
-      if (selectedEmployee) {
-        url = `/api/payroll/employee/${selectedEmployee}/month/${selectedMonth}`;
-      }
-
-      const res = await fetch(url, { credentials: "include" });
+      const employeeId = employee.employeeId || employee.id;
+      const res = await fetch(`/api/payroll/employee/${employeeId}/month/${selectedMonth}`, { 
+        credentials: "include" 
+      });
+      
       if (res.ok) {
-        if (selectedEmployee) {
-          const data = await res.json();
-          setPayrollData([data]);
-        } else {
-          const data = await res.json();
-          setPayrollData(data);
-        }
+        const data = await res.json();
+        setPayrollData([data]); // Single payroll record for the employee
       } else if (res.status === 404) {
         setPayrollData([]);
-        toast.warning("No payroll data found for the selected criteria");
+        toast.warning("No payroll data found for the selected month");
       } else {
         throw new Error("Failed to fetch payroll data");
       }
@@ -96,8 +74,10 @@ export default function PayslipGeneration() {
   };
 
   useEffect(() => {
-    fetchPayrollData();
-  }, [selectedMonth, selectedEmployee]);
+    if (selectedMonth && employee) {
+      fetchPayrollData();
+    }
+  }, [selectedMonth, employee]);
 
   const formatCurrency = (amount) => {
     if (!amount) return "₹0";
@@ -179,7 +159,7 @@ export default function PayslipGeneration() {
       }
 
       // Generate filename with employee name and month
-      const employeeName = (selectedPayroll?.employee?.fullName || selectedPayroll?.employeeName || 'Employee').replace(/[^a-zA-Z0-9]/g, '_');
+      const employeeName = (selectedPayroll?.employee?.fullName || employee?.fullName || 'Employee').replace(/[^a-zA-Z0-9]/g, '_');
       const month = selectedPayroll?.month?.replace(/[^a-zA-Z0-9]/g, '_') || 'Unknown';
       const filename = `Payslip_${employeeName}_${month}.pdf`;
 
@@ -324,11 +304,11 @@ export default function PayslipGeneration() {
                   Employee Information
                 </h3>
                 <div style={{ fontSize: "0.9rem", color: palette.dark }}>
-                  <p style={{ margin: "4px 0" }}><strong>Name:</strong> {payroll.employee?.fullName || payroll.employeeName || 'N/A'}</p>
-                  <p style={{ margin: "4px 0" }}><strong>Email:</strong> {payroll.employee?.email || payroll.employeeEmail || 'N/A'}</p>
-                  <p style={{ margin: "4px 0" }}><strong>Employee ID:</strong> {payroll.employee?.employeeId || payroll.employeeCode || 'N/A'}</p>
-                  <p style={{ margin: "4px 0" }}><strong>Department:</strong> {payroll.employee?.department || 'N/A'}</p>
-                  <p style={{ margin: "4px 0" }}><strong>Designation:</strong> {payroll.employee?.designation || 'N/A'}</p>
+                  <p style={{ margin: "4px 0" }}><strong>Name:</strong> {payroll.employee?.fullName || employee?.fullName || 'N/A'}</p>
+                  <p style={{ margin: "4px 0" }}><strong>Email:</strong> {payroll.employee?.email || employee?.email || 'N/A'}</p>
+                  <p style={{ margin: "4px 0" }}><strong>Employee ID:</strong> {payroll.employee?.employeeId || employee?.employeeId || employee?.id || 'N/A'}</p>
+                  <p style={{ margin: "4px 0" }}><strong>Department:</strong> {payroll.employee?.department || employee?.department || 'N/A'}</p>
+                  <p style={{ margin: "4px 0" }}><strong>Designation:</strong> {payroll.employee?.designation || employee?.designation || 'N/A'}</p>
                 </div>
               </div>
 
@@ -486,7 +466,7 @@ export default function PayslipGeneration() {
     }}>
       <DynamicNavigation />
       <div style={{ display: "flex", flex: 1 }}>
-        <Sidebar />
+        <EmployeeSidebar activePage="employee-payslips" />
         <main style={{ padding: "2.5rem 3rem", width: "100%" }}>
           <div style={{
             background: palette.white,
@@ -504,10 +484,10 @@ export default function PayslipGeneration() {
               gap: 12
             }}>
               <FaFileInvoiceDollar style={{ color: palette.accent }} />
-              Payslip Generation
+              My Payslips
             </h2>
 
-            {/* Filters */}
+            {/* Month Selection */}
             <div style={{
               background: `${palette.accent}11`,
               borderRadius: 12,
@@ -515,80 +495,45 @@ export default function PayslipGeneration() {
               marginBottom: 32,
               border: `2px solid ${palette.accent}22`
             }}>
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-                gap: 20
-              }}>
-                <div>
-                  <label style={{
-                    display: "block",
-                    fontWeight: 700,
-                    color: palette.dark,
-                    marginBottom: 8
-                  }}>
-                    Select Month
-                  </label>
-                  <select
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "12px",
-                      borderRadius: 8,
-                      border: `2px solid ${palette.gray}44`,
-                      fontSize: "1rem",
-                      outline: "none",
-                      background: palette.white,
-                      color: palette.dark
-                    }}
-                  >
-                    <option value="">Select Month</option>
-                    {generateMonthOptions().map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{
-                    display: "block",
-                    fontWeight: 700,
-                    color: palette.dark,
-                    marginBottom: 8
-                  }}>
-                    Select Employee (Optional)
-                  </label>
-                  <select
-                    value={selectedEmployee}
-                    onChange={(e) => setSelectedEmployee(e.target.value)}
-                    disabled={employeesLoading}
-                    style={{
-                      width: "100%",
-                      padding: "12px",
-                      borderRadius: 8,
-                      border: `2px solid ${palette.gray}44`,
-                      fontSize: "1rem",
-                      outline: "none",
-                      background: palette.white,
-                      color: palette.dark
-                    }}
-                  >
-                    <option value="">All Employees</option>
-                    {employees.map(emp => (
-                      <option key={emp.employeeId} value={emp.employeeId}>
-                        {emp.fullName} ({emp.email})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label style={{
+                  display: "block",
+                  fontWeight: 700,
+                  color: palette.dark,
+                  marginBottom: 8
+                }}>
+                  Select Month
+                </label>
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  style={{
+                    width: "300px",
+                    padding: "12px",
+                    borderRadius: 8,
+                    border: `2px solid ${palette.gray}44`,
+                    fontSize: "1rem",
+                    outline: "none",
+                    background: palette.white,
+                    color: palette.dark
+                  }}
+                >
+                  <option value="">Select Month</option>
+                  {generateMonthOptions().map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
             {/* Payroll Records */}
-            {payrollData.length > 0 && (
+            {loading ? (
+              <div style={{ textAlign: "center", padding: 40, color: palette.accent }}>
+                Loading payroll data...
+              </div>
+            ) : payrollData.length > 0 ? (
               <div>
                 <h3 style={{
                   color: palette.dark,
@@ -598,7 +543,7 @@ export default function PayslipGeneration() {
                   alignItems: "center",
                   gap: 8
                 }}>
-                  <FaCalendarAlt /> Available Payslips
+                  <FaCalendarAlt /> Your Payslip
                 </h3>
 
                 <div style={{
@@ -613,9 +558,11 @@ export default function PayslipGeneration() {
                   }}>
                     <thead>
                       <tr style={{ background: `${palette.accent}11` }}>
-                        <th style={{ padding: "12px", textAlign: "left", fontWeight: 700, color: palette.dark }}>Employee</th>
                         <th style={{ padding: "12px", textAlign: "left", fontWeight: 700, color: palette.dark }}>Month</th>
+                        <th style={{ padding: "12px", textAlign: "right", fontWeight: 700, color: palette.dark }}>Gross Salary</th>
+                        <th style={{ padding: "12px", textAlign: "right", fontWeight: 700, color: palette.dark }}>Deductions</th>
                         <th style={{ padding: "12px", textAlign: "right", fontWeight: 700, color: palette.dark }}>Net Salary</th>
+                        <th style={{ padding: "12px", textAlign: "center", fontWeight: 700, color: palette.dark }}>Unpaid Leaves</th>
                         <th style={{ padding: "12px", textAlign: "center", fontWeight: 700, color: palette.dark }}>Status</th>
                         <th style={{ padding: "12px", textAlign: "center", fontWeight: 700, color: palette.dark }}>Actions</th>
                       </tr>
@@ -624,21 +571,22 @@ export default function PayslipGeneration() {
                       {payrollData.map((payroll, index) => (
                         <tr key={payroll.id} style={{
                           borderBottom: `1px solid ${palette.gray}22`,
-                          backgroundColor: index % 2 === 0 ? palette.white : `${palette.gray}05`
+                          backgroundColor: palette.white
                         }}>
-                          <td style={{ padding: "12px", color: palette.dark, fontWeight: 500 }}>
-                            {payroll.employee?.fullName || payroll.employeeName || 'N/A'}
-                            {payroll.employee?.employeeId && (
-                              <div style={{ fontSize: "0.8rem", color: palette.gray }}>
-                                ID: {payroll.employee.employeeId}
-                              </div>
-                            )}
-                          </td>
-                          <td style={{ padding: "12px", color: palette.dark }}>
+                          <td style={{ padding: "12px", color: palette.dark, fontWeight: 600 }}>
                             {payroll.month}
+                          </td>
+                          <td style={{ padding: "12px", textAlign: "right", color: palette.dark, fontWeight: 600 }}>
+                            {formatCurrency(payroll.grossSalary)}
+                          </td>
+                          <td style={{ padding: "12px", textAlign: "right", color: palette.red, fontWeight: 600 }}>
+                            {formatCurrency(payroll.leaveDeduction)}
                           </td>
                           <td style={{ padding: "12px", textAlign: "right", color: palette.green, fontWeight: 700 }}>
                             {formatCurrency(payroll.netSalary)}
+                          </td>
+                          <td style={{ padding: "12px", textAlign: "center", color: palette.orange, fontWeight: 600 }}>
+                            {payroll.unpaidLeaves}
                           </td>
                           <td style={{ padding: "12px", textAlign: "center" }}>
                             <span style={{
@@ -678,10 +626,7 @@ export default function PayslipGeneration() {
                   </table>
                 </div>
               </div>
-            )}
-
-            {/* No Data Message */}
-            {selectedMonth && payrollData.length === 0 && !loading && (
+            ) : selectedMonth ? (
               <div style={{
                 textAlign: "center",
                 padding: 40,
@@ -692,10 +637,24 @@ export default function PayslipGeneration() {
               }}>
                 <FaCalendarAlt style={{ fontSize: "2rem", marginBottom: 16, opacity: 0.5 }} />
                 <p style={{ fontSize: "1.1rem", fontWeight: 600, margin: 0 }}>
-                  No payroll records found for the selected criteria
+                  No payslip found for {selectedMonth}
                 </p>
                 <p style={{ margin: "8px 0 0 0", opacity: 0.8 }}>
-                  Make sure payroll has been processed for the selected month
+                  Your payroll may not have been processed for this month yet
+                </p>
+              </div>
+            ) : (
+              <div style={{
+                textAlign: "center",
+                padding: 40,
+                color: palette.gray,
+                background: `${palette.gray}11`,
+                borderRadius: 12,
+                border: `2px dashed ${palette.gray}33`
+              }}>
+                <FaCalendarAlt style={{ fontSize: "2rem", marginBottom: 16, opacity: 0.5 }} />
+                <p style={{ fontSize: "1.1rem", fontWeight: 600, margin: 0 }}>
+                  Please select a month to view your payslip
                 </p>
               </div>
             )}

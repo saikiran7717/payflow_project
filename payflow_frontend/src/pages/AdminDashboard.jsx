@@ -851,222 +851,119 @@ export default function AdminDashboard({ active }) {
                 border: `1.5px solid ${palette.accent}22`,
               }}
             >
-              <div style={{ display: "flex", gap: 16, marginBottom: 18 }}>
-                <button
-                  onClick={() => setShowEmployees(false)}
-                  style={{
-                    background: !showEmployees ? palette.accent : palette.bg,
-                    color: !showEmployees ? palette.white : palette.accent,
-                    border: `1.5px solid ${palette.accent}`,
-                    borderRadius: 8,
-                    padding: "8px 22px",
-                    fontWeight: 700,
-                    fontSize: "1.05rem",
-                    cursor: !showEmployees ? "default" : "pointer",
-                    boxShadow: !showEmployees ? "0 2px 8px #6366f122" : "none",
-                    transition: "background 0.2s",
-                  }}
-                  disabled={!showEmployees}
-                >
-                  User List
-                </button>
-                <button
-                  onClick={() => setShowEmployees(true)}
-                  style={{
-                    background: showEmployees ? palette.accent : palette.bg,
-                    color: showEmployees ? palette.white : palette.accent,
-                    border: `1.5px solid ${palette.accent}`,
-                    borderRadius: 8,
-                    padding: "8px 22px",
-                    fontWeight: 700,
-                    fontSize: "1.05rem",
-                    cursor: showEmployees ? "default" : "pointer",
-                    boxShadow: showEmployees ? "0 2px 8px #6366f122" : "none",
-                    transition: "background 0.2s",
-                  }}
-                  disabled={showEmployees}
-                >
-                  Employee List
-                </button>
-              </div>
+              <h3
+                style={{
+                  fontWeight: 800,
+                  marginBottom: 18,
+                  color: palette.accent,
+                  fontSize: "1.35rem",
+                  letterSpacing: 0.2,
+                }}
+              >
+                User List
+              </h3>
               {loading ? (
-                <p style={{ color: palette.accent, fontWeight: 600, fontSize: "1.1rem" }}>Loading {showEmployees ? "employees" : "users"}...</p>
+                <p style={{ color: palette.accent, fontWeight: 600, fontSize: "1.1rem" }}>Loading users...</p>
               ) : error ? (
                 <p style={{ color: palette.red, fontWeight: 600 }}>{error}</p>
               ) : (
                 <>
-                  {/* Add vertical scroll for employee list to prevent overflow */}
-                  {showEmployees ? (
-                    <div style={{ width: "100%" }}>
-                      <table
-                        style={{
-                          width: "100%",
-                          borderCollapse: "separate",
-                          borderSpacing: 0,
-                          fontSize: "1.05rem",
-                          color: "#1a1a1a",
-                          background: "transparent",
-                          borderRadius: 12,
-                          overflow: "hidden",
-                          boxShadow: "0 2px 8px #6366f111",
-                          border: `2px solid ${palette.dark}44`,
-                        }}
-                      >
-                        <thead
-                          style={{
-                            background: palette.accent + "11",
-                            borderBottom: `2.5px solid ${palette.accent}`,
-                            textAlign: "left",
-                          }}
-                        >
-                          <tr>
-                            <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>ID</th>
-                            <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>Full Name</th>
-                            <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>Email</th>
-                            <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>Designation</th>
-                            <th style={{ padding: 14, fontWeight: 800, color: palette.accent }}>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {currentEmployees.map((emp, idx) => (
-                            <tr
-                              key={emp.id || emp.employeeId}
-                              style={{
-                                borderBottom: "1.5px solid #64748b66",
-                                background:
-                                  idx % 2 === 0
-                                    ? palette.white
-                                    : palette.bg,
-                                transition: "background 0.2s",
-                                color: "#1a1a1a",
-                              }}
-                            >
-                              <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>{emp.id || emp.employeeId}</td>
-                              <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>{emp.name || emp.fullName}</td>
-                              <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>{emp.email}</td>
-                              <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>{emp.designation || emp.position}</td>
-                              <td style={{ padding: 14 }}>
-                                <button
-                                  style={{
-                                    background: palette.accent,
-                                    color: palette.white,
-                                    border: "none",
-                                    borderRadius: 8,
-                                    padding: "7px 16px",
-                                    fontWeight: 700,
-                                    cursor: "pointer",
-                                    fontSize: "1rem",
-                                    boxShadow: "0 2px 8px #6366f122",
-                                    transition: "background 0.2s",
-                                  }}
-                                  onClick={() => handleShowEmployeeDetails(emp)}
-                                >
-                                  View Details
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <table
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "separate",
+                      borderSpacing: 0,
+                      fontSize: "1.05rem",
+                      color: "#1a1a1a",
+                      background: "transparent",
+                      borderRadius: 12,
+                      overflow: "hidden",
+                      boxShadow: "0 2px 8px #6366f111",
+                      border: `2px solid ${palette.dark}44`,
+                    }}
+                  >
+                    <thead
                       style={{
-                        width: "100%",
-                        borderCollapse: "separate",
-                        borderSpacing: 0,
-                        fontSize: "1.05rem",
-                        color: "#1a1a1a",
-                        background: "transparent",
-                        borderRadius: 12,
-                        overflow: "hidden",
-                        boxShadow: "0 2px 8px #6366f111",
-                        border: `2px solid ${palette.dark}44`,
+                        background: palette.accent + "11",
+                        borderBottom: `2.5px solid ${palette.accent}`,
+                        textAlign: "left",
                       }}
                     >
-                      <thead
-                        style={{
-                          background: palette.accent + "11",
-                          borderBottom: `2.5px solid ${palette.accent}`,
-                          textAlign: "left",
-                        }}
-                      >
-                        <tr>
-                          <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>ID</th>
-                          <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>Username</th>
-                          <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>Email</th>
-                          <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>Role</th>
-                          <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>Status</th>
-                          <th style={{ padding: 14, fontWeight: 800, color: palette.accent }}>Actions</th>
+                      <tr>
+                        <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>ID</th>
+                        <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>Username</th>
+                        <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>Email</th>
+                        <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>Role</th>
+                        <th style={{ padding: 14, fontWeight: 800, color: palette.accent, borderRight: `1px solid ${palette.dark}33` }}>Status</th>
+                        <th style={{ padding: 14, fontWeight: 800, color: palette.accent }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentUsers.map((user, idx) => (
+                        <tr
+                          key={user.id || user.userId}
+                          style={{
+                            borderBottom: "1.5px solid #64748b66",
+                            background:
+                              user.status === "inactive"
+                                ? "#fee2e2"
+                                : idx % 2 === 0
+                                ? palette.white
+                                : palette.bg,
+                            transition: "background 0.2s",
+                            color: "#1a1a1a",
+                          }}
+                        >
+                          <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>{user.id || user.userId}</td>
+                          <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>{user.username}</td>
+                          <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>{user.email}</td>
+                          <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>{user.role}</td>
+                          <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22` }}>
+                            {user.status === "active" ? (
+                              <span style={{ 
+                                color: palette.green, 
+                                fontWeight: 700,
+                                backgroundColor: palette.green + "20",
+                                padding: "4px 12px",
+                                borderRadius: 8,
+                                fontSize: "0.9rem"
+                              }}>Active</span>
+                            ) : (
+                              <span style={{ 
+                                color: palette.red, 
+                                fontWeight: 700,
+                                backgroundColor: palette.red + "20",
+                                padding: "4px 12px",
+                                borderRadius: 8,
+                                fontSize: "0.9rem"
+                              }}>Inactive</span>
+                            )}
+                          </td>
+                          <td style={{ padding: 14 }}>
+                            <button
+                              onClick={() =>
+                                handleToggleStatus(user.id || user.userId)
+                              }
+                              style={{
+                                background: user.status === "active" ? palette.red : palette.green,
+                                border: "none",
+                                borderRadius: 8,
+                                padding: "7px 16px",
+                                cursor: "pointer",
+                                color: palette.white,
+                                fontWeight: 700,
+                                fontSize: "1.05rem",
+                                boxShadow: "0 2px 8px #6366f122",
+                                transition: "background 0.2s",
+                              }}
+                            >
+                              {user.status === "active" ? "Disable" : "Enable"}
+                            </button>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {currentUsers.map((user, idx) => (
-                          <tr
-                            key={user.id || user.userId}
-                            style={{
-                              borderBottom: "1.5px solid #64748b66",
-                              background:
-                                user.status === "inactive"
-                                  ? "#fee2e2"
-                                  : idx % 2 === 0
-                                  ? palette.white
-                                  : palette.bg,
-                              transition: "background 0.2s",
-                              color: "#1a1a1a",
-                            }}
-                          >
-                            <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>{user.id || user.userId}</td>
-                            <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>{user.username}</td>
-                            <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>{user.email}</td>
-                            <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22`, color: "#1a1a1a", fontWeight: 600 }}>{user.role}</td>
-                            <td style={{ padding: 14, borderRight: `1px solid ${palette.dark}22` }}>
-                              {user.status === "active" ? (
-                                <span style={{ 
-                                  color: palette.green, 
-                                  fontWeight: 700,
-                                  backgroundColor: palette.green + "20",
-                                  padding: "4px 12px",
-                                  borderRadius: 8,
-                                  fontSize: "0.9rem"
-                                }}>Active</span>
-                              ) : (
-                                <span style={{ 
-                                  color: palette.red, 
-                                  fontWeight: 700,
-                                  backgroundColor: palette.red + "20",
-                                  padding: "4px 12px",
-                                  borderRadius: 8,
-                                  fontSize: "0.9rem"
-                                }}>Inactive</span>
-                              )}
-                            </td>
-                            <td style={{ padding: 14 }}>
-                              <button
-                                onClick={() =>
-                                  handleToggleStatus(user.id || user.userId)
-                                }
-                                style={{
-                                  background: user.status === "active" ? palette.red : palette.green,
-                                  border: "none",
-                                  borderRadius: 8,
-                                  padding: "7px 16px",
-                                  cursor: "pointer",
-                                  color: palette.white,
-                                  fontWeight: 700,
-                                  fontSize: "1.05rem",
-                                  boxShadow: "0 2px 8px #6366f122",
-                                  transition: "background 0.2s",
-                                }}
-                              >
-                                {user.status === "active" ? "Disable" : "Enable"}
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+                      ))}
+                    </tbody>
+                  </table>
 
                   <div
                     style={{
@@ -1076,87 +973,43 @@ export default function AdminDashboard({ active }) {
                       gap: 14,
                     }}
                   >
-                    {showEmployees ? (
-                      <>
-                        <button
-                          onClick={handleEmpPreviousPage}
-                          disabled={empCurrentPage === 1}
-                          style={{
-                            padding: "8px 18px",
-                            borderRadius: 8,
-                            border: `1.5px solid ${palette.accent}`,
-                            background: empCurrentPage === 1 ? palette.bg : palette.accent,
-                            color: empCurrentPage === 1 ? "#64748b" : palette.white,
-                            cursor: empCurrentPage === 1 ? "default" : "pointer",
-                            fontWeight: 700,
-                            fontSize: "1.05rem",
-                            transition: "background 0.2s",
-                          }}
-                        >
-                          Previous
-                        </button>
-                        <span style={{ fontWeight: 700, alignSelf: "center", color: palette.accent, fontSize: "1.08rem" }}>
-                          Page {empCurrentPage} of {empTotalPages}
-                        </span>
-                        <button
-                          onClick={handleEmpNextPage}
-                          disabled={empCurrentPage === empTotalPages}
-                          style={{
-                            padding: "8px 18px",
-                            borderRadius: 8,
-                            border: `1.5px solid ${palette.accent}`,
-                            background: empCurrentPage === empTotalPages ? palette.bg : palette.accent,
-                            color: empCurrentPage === empTotalPages ? "#64748b" : palette.white,
-                            cursor: empCurrentPage === empTotalPages ? "default" : "pointer",
-                            fontWeight: 700,
-                            fontSize: "1.05rem",
-                            transition: "background 0.2s",
-                          }}
-                        >
-                          Next
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={handlePreviousPage}
-                          disabled={currentPage === 1}
-                          style={{
-                            padding: "8px 18px",
-                            borderRadius: 8,
-                            border: `1.5px solid ${palette.accent}`,
-                            background: currentPage === 1 ? palette.bg : palette.accent,
-                            color: currentPage === 1 ? "#64748b" : palette.white,
-                            cursor: currentPage === 1 ? "default" : "pointer",
-                            fontWeight: 700,
-                            fontSize: "1.05rem",
-                            transition: "background 0.2s",
-                          }}
-                        >
-                          Previous
-                        </button>
-                        <span style={{ fontWeight: 700, alignSelf: "center", color: palette.accent, fontSize: "1.08rem" }}>
-                          Page {currentPage} of {totalPages}
-                        </span>
-                        <button
-                          onClick={handleNextPage}
-                          disabled={currentPage === totalPages}
-                          style={{
-                            padding: "8px 18px",
-                            borderRadius: 8,
-                            border: `1.5px solid ${palette.accent}`,
-                            background: currentPage === totalPages ? palette.bg : palette.accent,
-                            color: currentPage === totalPages ? "#64748b" : palette.white,
-                            cursor: currentPage === totalPages ? "default" : "pointer",
-                            fontWeight: 700,
-                            fontSize: "1.05rem",
-                            transition: "background 0.2s",
-                          }}
-                        >
-                          Next
-                        </button>
-                      </>
-                    )}
+                    <button
+                      onClick={handlePreviousPage}
+                      disabled={currentPage === 1}
+                      style={{
+                        padding: "8px 18px",
+                        borderRadius: 8,
+                        border: `1.5px solid ${palette.accent}`,
+                        background: currentPage === 1 ? palette.bg : palette.accent,
+                        color: currentPage === 1 ? "#64748b" : palette.white,
+                        cursor: currentPage === 1 ? "default" : "pointer",
+                        fontWeight: 700,
+                        fontSize: "1.05rem",
+                        transition: "background 0.2s",
+                      }}
+                    >
+                      Previous
+                    </button>
+                    <span style={{ fontWeight: 700, alignSelf: "center", color: palette.accent, fontSize: "1.08rem" }}>
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <button
+                      onClick={handleNextPage}
+                      disabled={currentPage === totalPages}
+                      style={{
+                        padding: "8px 18px",
+                        borderRadius: 8,
+                        border: `1.5px solid ${palette.accent}`,
+                        background: currentPage === totalPages ? palette.bg : palette.accent,
+                        color: currentPage === totalPages ? "#64748b" : palette.white,
+                        cursor: currentPage === totalPages ? "default" : "pointer",
+                        fontWeight: 700,
+                        fontSize: "1.05rem",
+                        transition: "background 0.2s",
+                      }}
+                    >
+                      Next
+                    </button>
                   </div>
                 </>
               )}

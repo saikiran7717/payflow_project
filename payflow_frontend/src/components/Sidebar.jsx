@@ -157,6 +157,16 @@ const Sidebar = () => {
                     CTC Info
                   </Link>
                 </li>
+                <li>
+                  <Link to="/payroll-processing" style={linkStyle("/payroll-processing")}>
+                    Payroll Processing
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/payslip-generation" style={linkStyle("/payslip-generation")}>
+                    Payslip Generation
+                  </Link>
+                </li>
               </>
             )}
 

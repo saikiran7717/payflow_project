@@ -4,6 +4,7 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ResetPassword from "./pages/ResetPassword";
+import ForgotPassword from "./pages/ForgotPassword";
 import AdminDashboard from "./pages/AdminDashboard";
 import HRDashboard from "./pages/HRDashboard";
 import ManagerDashboard from "./pages/Managerdashboard";
@@ -19,6 +20,7 @@ import LeaveRequests from "./pages/Leave/LeaveRequests";
 import LeaveApproval from "./pages/Leave/LeaveApproval";
 import PayrollProcessing from "./pages/Payroll/PayrollProcessing";
 import PayslipGeneration from "./pages/Payroll/PayslipGeneration";
+import EmployeePayslips from "./pages/EmployeePayslips";
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -29,10 +31,12 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/reset" element={<ResetPassword />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/employee-dashboard" element={<EmployeeDashboard />} />
       <Route path="/apply-leave" element={<ApplyLeave />} />
       <Route path="/leaves-info" element={<LeavesInfo />} />
       <Route path="/ctc-details" element={<CTCDetails />} />
+      <Route path="/employee-payslips" element={<EmployeePayslips />} />
 
       {/* Dashboard routes only accessible if logged in */}
       {user && user.role === "admin" && (
@@ -50,6 +54,8 @@ function AppRoutes() {
           <Route path="/employees" element={<HRDashboard />} />
           <Route path="/ctc-info" element={<CTCInfo />} />
           <Route path="/leave-requests" element={<LeaveRequests />} />
+          <Route path="/payroll-processing" element={<PayrollProcessing />} />
+          <Route path="/payslip-generation" element={<PayslipGeneration />} />
         </>
       )}
       {user && (user.role === "MANAGER" || user.role === "manager") && (

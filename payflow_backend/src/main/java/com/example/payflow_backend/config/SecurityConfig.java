@@ -68,7 +68,9 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/admins/login",
                                 "/api/admins/register",
-                                "/api/users/login"
+                                "/api/users/login",
+                                "/api/employees/login",
+                                "/api/forgot-password"
                         ).permitAll()
                         .requestMatchers(
                                 "/api/users/register",

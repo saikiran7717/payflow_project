@@ -75,6 +75,12 @@ public class Employee {
     @JsonIgnore  // Exclude from JSON serialization to prevent lazy loading issues
     private List<CTC> ctcDetails;
 
+    // 🔽 One-to-Many Relationship with Payroll Records
+    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonManagedReference
+    @JsonIgnore  // Exclude from JSON serialization to prevent lazy loading issues
+    private List<Payroll> payrollRecords;
+
 
     public boolean isTempPassword() {
         return isTempPassword;
