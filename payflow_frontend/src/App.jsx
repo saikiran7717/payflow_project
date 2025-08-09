@@ -4,7 +4,6 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ResetPassword from "./pages/ResetPassword";
-import ForgotPassword from "./pages/ForgotPassword";
 import AdminDashboard from "./pages/AdminDashboard";
 import HRDashboard from "./pages/HRDashboard";
 import ManagerDashboard from "./pages/Managerdashboard";
@@ -31,7 +30,6 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/reset" element={<ResetPassword />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/employee-dashboard" element={<EmployeeDashboard />} />
       <Route path="/apply-leave" element={<ApplyLeave />} />
       <Route path="/leaves-info" element={<LeavesInfo />} />
