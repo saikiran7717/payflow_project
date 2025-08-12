@@ -181,7 +181,8 @@ export default function EmployeeDashboard() {
           
           console.log("Calculated used leaves:", usedLeaves);
           
-          const remainingLeaves = totalLeaves - usedLeaves;
+          // Ensure remaining leaves do not go negative
+          const remainingLeaves = Math.max(0, totalLeaves - usedLeaves);
           console.log("Calculated remaining leaves:", remainingLeaves);
 
           const pendingLeaves = leaveData.filter(leave => leave.status?.toLowerCase() === 'pending').length;
@@ -249,7 +250,7 @@ export default function EmployeeDashboard() {
     {
       icon: <FaLeaf />,
       label: "Remaining Leaves",
-      value: employee?.remLeaves ?? "Loading...",
+  value: employee?.remLeaves != null ? Math.max(0, employee.remLeaves) : "Loading...",
       color: palette.green,
     },
     {
@@ -278,7 +279,7 @@ export default function EmployeeDashboard() {
     datasets: [
       {
         data: [
-          employee?.remLeaves || 0, // Available leaves (calculated from backend)
+          Math.max(0, employee?.remLeaves || 0), // Available leaves (non-negative)
           employee?.usedLeaves || 0, // Used leaves (calculated from approved leaves)
           employee?.pendingLeaves || 0 // Pending leaves (from backend)
         ],
